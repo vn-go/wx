@@ -9,7 +9,7 @@ import (
 )
 
 type routeItem struct {
-	Info handlerInfo
+	Info *handlerInfo
 }
 type routeTypes struct {
 	Data    map[string]routeItem

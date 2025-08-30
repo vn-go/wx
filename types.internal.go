@@ -44,6 +44,7 @@ type handlerInfo struct {
 	*/
 	reqFieldIndex                    []int
 	method                           reflect.Method
+	isNoOutPut                       bool
 	isAbsUri                         bool
 	uri                              string
 	isQueryUri                       bool
@@ -62,9 +63,13 @@ type handlerInfo struct {
 	formPostType                     reflect.Type
 	httpMethod                       string
 
-	routeTags      []string
-	queryParams    []queryParam
-	regexUri       string
-	uriHandler     string
-	isRegexHandler bool
+	routeTags                          []string
+	queryParams                        []queryParam
+	regexUri                           string
+	uriHandler                         string
+	isRegexHandler                     bool
+	fieldIndexOfResController          []int
+	fieldIndexOfReqController          []int
+	fiedIndexOfHttpContextInController []int
+	hasHttpContextInController         bool
 }

@@ -6,11 +6,10 @@ import (
 
 type webHandler struct {
 	RoutePath string
-	ApiInfo   handlerInfo
+	ApiInfo   *handlerInfo
 	InitFunc  reflect.Value
 	Method    string
 	Index     int
-	
 }
 
 var handlerList []webHandler

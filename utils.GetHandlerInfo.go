@@ -46,6 +46,12 @@ func (u *utilsType) GetHandlerInfo(method reflect.Method) (*handlerInfo, error) 
 			if controllerType.Kind() == reflect.Ptr {
 				controllerTypeElem = controllerType.Elem()
 			}
+			isNoOutPut := false
+			if method.Type.NumOut() == 0 {
+				isNoOutPut = true
+			} else if method.Type.Out(0).Implements(reflect.TypeOf((*error)(nil)).Elem()) {
+				isNoOutPut = true
+			}
 
 			ret := &handlerInfo{
 				indexOfArgIsRequestBody: -1,
@@ -56,7 +62,17 @@ func (u *utilsType) GetHandlerInfo(method reflect.Method) (*handlerInfo, error) 
 				controllerTypeElem:      controllerTypeElem,
 				controllerType:          controllerType,
 				indexOfArhIsAuthClaims:  -1,
+				isNoOutPut:              isNoOutPut,
 			}
+			fiedIndexOfHttpContextInController, ok := utils.controllers.FindIndexOfFieldHttpContext(controllerTypeElem)
+			if ok {
+				ret.hasHttpContextInController = true
+				ret.fiedIndexOfHttpContextInController = fiedIndexOfHttpContextInController
+				fieldIndexOfReqController, fieldIndexOfResController := utils.controllers.FindReqResFieldIndex(controllerTypeElem)
+				ret.fieldIndexOfReqController = fieldIndexOfReqController
+				ret.fieldIndexOfResController = fieldIndexOfResController
+			}
+
 			method, err := utils.controllers.FindNewMeyhod(ret)
 			if err != nil {
 				return nil, err

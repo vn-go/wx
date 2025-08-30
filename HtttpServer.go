@@ -48,15 +48,11 @@ func NewHtttpServer(baseUrl string, port string, bind string) *HtttpServer {
 func (s *HtttpServer) loadController() error {
 	for _, x := range utils.Routes.UriList {
 		fmt.Println("Registering route:", x)
-		s.mux.HandleFunc(x, func(w http.ResponseWriter, r *http.Request) {
-			route := utils.Routes.Data[x]
-			controller, _ := utils.controllers.Create(&route.Info)
-			fmt.Println(controller)
-			// route := utils.Routes.Data[x]
-			// data, err := utils.ReqExec.Invoke(route.Info, r, w)
-			// handlers.Helper.ReqExec.ProcesHttp(route.Info, data, err, r, w)
-
-		})
+		// s.mux.HandleFunc(x, func(w http.ResponseWriter, r *http.Request) {
+		// 	route := utils.Routes.Data[x]
+		// 	route.Info.Invoke(w, r)
+		// })
+		s.mux.HandleFunc(x, utils.Routes.Data[x].Info.Handler())
 
 	}
 	return nil

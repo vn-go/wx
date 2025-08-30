@@ -33,12 +33,12 @@ func (r *routeTypes) Add(baseUri string, ins ...any) error {
 			}
 			if info.isAbsUri {
 				r.Data[info.uriHandler] = routeItem{
-					Info: *info,
+					Info: info,
 				}
 				r.UriList = append(r.UriList, info.uriHandler)
 			} else {
 				r.Data[baseUri+"/"+info.uriHandler] = routeItem{
-					Info: *info,
+					Info: info,
 				}
 				r.UriList = append(r.UriList, baseUri+"/"+info.uriHandler)
 			}
