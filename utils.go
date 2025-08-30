@@ -68,8 +68,11 @@ var utils = &utilsType{
 	ReqFieldName:         "Req",
 	ResFieldName:         "Res",
 	cacheGetMethodByName: sync.Map{},
-	Routes:               &routeTypes{},
-	Tags:                 &tagsHelperType{},
+	Routes: &routeTypes{
+		Data:    map[string]routeItem{},
+		UriList: []string{},
+	},
+	Tags: &tagsHelperType{},
 	Uri: &uriHelperType{
 		SpecialCharForRegex: "/\\?.$%^*-+",
 	},

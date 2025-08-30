@@ -19,6 +19,9 @@ var css []byte
 //go:embed swagger3/swagger-ui-bundle.js
 var js []byte
 
+//go:embed swagger3/swagger-ui-standalone-preset.js
+var jsPreset []byte
+
 type SwaggerContact struct {
 	Name  string `json:"name,omitempty"`
 	Email string `json:"email,omitempty"`
@@ -122,6 +125,14 @@ func (sb *swaggerBuild) Build() error {
 		// Đọc file swagger.json từ thư mục hiện tại
 		w.Header().Set("Content-Type", "application/javascript")
 		if _, err := w.Write(js); err != nil {
+			http.Error(w, "failed to write response", http.StatusInternalServerError)
+			return
+		}
+	})
+	mux.HandleFunc(uri+"/swagger-ui-standalone-preset.js", func(w http.ResponseWriter, r *http.Request) {
+		// Đọc file swagger.json từ thư mục hiện tại
+		w.Header().Set("Content-Type", "application/javascript")
+		if _, err := w.Write(jsPreset); err != nil {
 			http.Error(w, "failed to write response", http.StatusInternalServerError)
 			return
 		}

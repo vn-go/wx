@@ -5,7 +5,10 @@ import (
 )
 
 func main() {
-	server := wx.NewHtttpServer("api", "8080", "0.0.0.0")
+	if err := wx.Routes("/api", &Media{}); err != nil {
+		panic(err)
+	}
+	server := wx.NewHtttpServer("/api", "8080", "0.0.0.0")
 	swagger := wx.CreateSwagger(server, "/swagger")
 	swagger.Info(wx.SwaggerInfo{
 		Title:       "Swagger Example API",

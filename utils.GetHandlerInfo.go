@@ -62,6 +62,20 @@ func (u *utilsType) GetHandlerInfo(method reflect.Method) (*handlerInfo, error) 
 	}
 	return nil, nil
 }
+func (u *uriHelperType) MakeHandlerFromMethod(method reflect.Method) (*handlerInfo, error) {
+	info, err := utils.GetHandlerInfo(method)
+	if err != nil {
+		return nil, err
+	}
+	if info == nil {
+		return nil, nil
+	}
+
+	utils.ExtractUriInfo(info)
+	utils.ExtractBodInfo(info)
+	return info, nil
+}
+
 func init() {
 	mock.MockGetHandlerInfo = func(m reflect.Method) (interface{}, error) {
 		return utils.GetHandlerInfo(m)

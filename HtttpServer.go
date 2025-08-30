@@ -3,6 +3,7 @@ package wx
 import (
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -26,6 +27,13 @@ type HtttpServer struct {
 }
 
 func NewHtttpServer(baseUrl string, port string, bind string) *HtttpServer {
+	if baseUrl[0] != '/' {
+		baseUrl = "/" + baseUrl
+	}
+	if baseUrl[len(baseUrl)-1] == '/' {
+		baseUrl = baseUrl[:len(baseUrl)-1]
+	}
+	baseUrl = strings.ReplaceAll(baseUrl, "//", "/")
 	mux := http.NewServeMux()
 	return &HtttpServer{
 		Port:    port,
@@ -37,8 +45,26 @@ func NewHtttpServer(baseUrl string, port string, bind string) *HtttpServer {
 	}
 
 }
-func (s *HtttpServer) Start() error {
+func (s *HtttpServer) loadController() error {
+	for _, x := range utils.Routes.UriList {
+		fmt.Println("Registering route:", x)
+		s.mux.HandleFunc(x, func(w http.ResponseWriter, r *http.Request) {
+			fmt.Println("OK")
+			// route := utils.Routes.Data[x]
+			// data, err := utils.ReqExec.Invoke(route.Info, r, w)
+			// handlers.Helper.ReqExec.ProcesHttp(route.Info, data, err, r, w)
 
+		})
+
+	}
+	return nil
+
+}
+func (s *HtttpServer) Start() error {
+	err := s.loadController()
+	if err != nil {
+		return err
+	}
 	// handler cuối cùng gọi mux
 	final := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		s.mux.ServeHTTP(w, r)
