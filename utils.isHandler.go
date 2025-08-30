@@ -41,11 +41,19 @@ func (u *utilsType) GetHandlerInfo(method reflect.Method) (*handlerInfo, error) 
 			if err != nil {
 				return nil, err
 			}
+			controllerType := method.Type.In(0)
+			controllerTypeElem := controllerType
+			if controllerType.Kind() == reflect.Ptr {
+				controllerTypeElem = controllerType.Elem()
+			}
+
 			return &handlerInfo{
-				IndexOfArg:    i,
-				ResFieldIndex: resIndex,
-				ReqFieldIndex: reqIndex,
-				Method:        method,
+				IndexOfArgIsHttpContext: i,
+				ResFieldIndex:           resIndex,
+				ReqFieldIndex:           reqIndex,
+				Method:                  method,
+				ControllerTypeElem:      controllerTypeElem,
+				ControllerType:          controllerType,
 			}, nil
 		}
 	}

@@ -28,6 +28,9 @@ type utilsType struct {
 	IndexOfReqField      []int
 	IndexOfResField      []int
 	Routes               *routeTypes
+	Tags                 *tagsHelperType
+	Uri                  *uriHelperType
+	controllers          *controllerHelperType
 }
 
 func (u *utilsType) GetMethodByName(typ reflect.Type, name string) (reflect.Method, bool) {
@@ -64,6 +67,11 @@ var utils = &utilsType{
 	ResFieldName:         "Res",
 	cacheGetMethodByName: sync.Map{},
 	Routes:               &routeTypes{},
+	Tags:                 &tagsHelperType{},
+	Uri: &uriHelperType{
+		SpecialCharForRegex: "/\\?.$%^*-+",
+	},
+	controllers: &controllerHelperType{},
 }
 
 func init() {
