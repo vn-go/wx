@@ -48,15 +48,20 @@ func (u *utilsType) GetHandlerInfo(method reflect.Method) (*handlerInfo, error) 
 			}
 
 			ret := &handlerInfo{
-				IndexOfArgIsRequestBody: -1,
-				IndexOfArgIsHttpContext: i,
-				ResFieldIndex:           resIndex,
-				ReqFieldIndex:           reqIndex,
-				Method:                  method,
-				ControllerTypeElem:      controllerTypeElem,
-				ControllerType:          controllerType,
+				indexOfArgIsRequestBody: -1,
+				indexOfArgIsHttpContext: i,
+				resFieldIndex:           resIndex,
+				reqFieldIndex:           reqIndex,
+				method:                  method,
+				controllerTypeElem:      controllerTypeElem,
+				controllerType:          controllerType,
+				indexOfArhIsAuthClaims:  -1,
 			}
-
+			method, err := utils.controllers.FindNewMeyhod(ret)
+			if err != nil {
+				return nil, err
+			}
+			ret.conrollerNewMethod = method
 			return ret, nil
 		}
 	}
@@ -72,7 +77,7 @@ func (u *uriHelperType) MakeHandlerFromMethod(method reflect.Method) (*handlerIn
 	}
 
 	utils.ExtractUriInfo(info)
-	utils.ExtractBodInfo(info)
+	utils.ExtractBodyInfo(info)
 	return info, nil
 }
 

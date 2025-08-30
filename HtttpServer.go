@@ -49,7 +49,9 @@ func (s *HtttpServer) loadController() error {
 	for _, x := range utils.Routes.UriList {
 		fmt.Println("Registering route:", x)
 		s.mux.HandleFunc(x, func(w http.ResponseWriter, r *http.Request) {
-			fmt.Println("OK")
+			route := utils.Routes.Data[x]
+			controller, _ := utils.controllers.Create(&route.Info)
+			fmt.Println(controller)
 			// route := utils.Routes.Data[x]
 			// data, err := utils.ReqExec.Invoke(route.Info, r, w)
 			// handlers.Helper.ReqExec.ProcesHttp(route.Info, data, err, r, w)

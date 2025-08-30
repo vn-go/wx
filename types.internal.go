@@ -30,40 +30,41 @@ type handlerInfo struct {
 			so need a field to keep position of Hanlder arg
 
 	*/
-	IndexOfArgIsHttpContext    int
-	TypeOfArgIsHttpContext     reflect.Type
-	TypeOfArgIsHttpContextElem reflect.Type
+	indexOfArgIsHttpContext    int
+	typeOfArgIsHttpContext     reflect.Type
+	typeOfArgIsHttpContextElem reflect.Type
 	/*
 		HttpContext is a struct that has two important fields, Req and Res, with corresponding types *http.Request and http.ResponseWriter.
-		This field represents the FieldIndex of Res
+		This field represents the Fieldindex of Res
 	*/
-	ResFieldIndex []int
+	resFieldIndex []int
 	/*
 		HttpContext is a struct that has two important fields, Req and Res, with corresponding types *http.Request and http.ResponseWriter.
-		This field represents the FieldIndex of Req
+		This field represents the Fieldindex of Req
 	*/
-	ReqFieldIndex                    []int
-	Method                           reflect.Method
-	IsAbsUri                         bool
-	Uri                              string
-	IsQueryUri                       bool
-	UriQuery                         string
-	ControllerTypeElem               reflect.Type
-	ControllerType                   reflect.Type
-	UriParams                        []uriParam
-	ListOfIndexFieldIsFormUploadFile []int
-	TypeOfRequestBodyElem            reflect.Type
-	TypeOfRequestBody                reflect.Type
-	IndexOfArhIsAuthClaims           int
-	IndexOfArgIsRequestBody          int
-	IsFormPost                       bool
-	FormPostTypeEle                  reflect.Type
-	FormPostType                     reflect.Type
-	HttpMethod                       string
+	reqFieldIndex                    []int
+	method                           reflect.Method
+	isAbsUri                         bool
+	uri                              string
+	isQueryUri                       bool
+	uriQuery                         string
+	controllerTypeElem               reflect.Type
+	controllerType                   reflect.Type
+	conrollerNewMethod               *reflect.Method
+	uriParams                        []uriParam
+	listOfIndexFieldIsFormUploadFile []int
+	typeOfRequestBodyElem            reflect.Type
+	typeOfRequestBody                reflect.Type
+	indexOfArhIsAuthClaims           int
+	indexOfArgIsRequestBody          int
+	isFormPost                       bool
+	formPostTypeEle                  reflect.Type
+	formPostType                     reflect.Type
+	httpMethod                       string
 
-	RouteTags      []string
-	QueryParams    []queryParam
-	RegexUri       string
-	UriHandler     string
-	IsRegexHandler bool
+	routeTags      []string
+	queryParams    []queryParam
+	regexUri       string
+	uriHandler     string
+	isRegexHandler bool
 }

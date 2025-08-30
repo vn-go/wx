@@ -7,12 +7,61 @@ import (
 	swaggers3 "github.com/vn-go/wx/swagger3"
 )
 
+func (sb *swaggerBuild) createSimpleUploadFile(handler webHandler) *swaggers3.RequestBody {
+	props := make(map[string]*swaggers3.Schema)
+
+	typ := handler.ApiInfo.typeOfRequestBodyElem
+	arrayNullable := false
+	if typ.Kind() == reflect.Ptr {
+		typ = typ.Elem()
+		arrayNullable = true
+
+	}
+
+	if typ.Kind() == reflect.Slice {
+		// multiple files
+
+		props["files"] = &swaggers3.Schema{
+
+			Type:     "array",
+			Nullable: arrayNullable,
+			Items: &swaggers3.Schema{
+				Type:     "string",
+				Format:   "binary",
+				Nullable: typ.Kind() == reflect.Ptr,
+			},
+			Description: "select multiple files",
+		}
+	} else {
+		// single file
+		props["file"] = &swaggers3.Schema{
+			Type:     "string",
+			Format:   "binary",
+			Nullable: arrayNullable,
+		}
+	}
+	// Gán vào requestBody thay vì parameters
+	ret := &swaggers3.RequestBody{
+		Required: true,
+		Content: map[string]swaggers3.MediaType{
+			"multipart/form-data": {
+
+				Schema: &swaggers3.Schema{
+					Type:       "object",
+					Properties: props,
+				},
+			},
+		},
+	}
+	return ret
+}
+
 func (sb *swaggerBuild) createRequestBody(handler webHandler) *swaggers3.RequestBody {
-	if handler.ApiInfo.IsFormPost {
+	if handler.ApiInfo.isFormPost {
 		props := make(map[string]*swaggers3.Schema)
-		bodyType := handler.ApiInfo.FormPostTypeEle
+		bodyType := handler.ApiInfo.formPostTypeEle
 		for i := 0; i < bodyType.NumField(); i++ {
-			if !internal.Contains(handler.ApiInfo.ListOfIndexFieldIsFormUploadFile, i) {
+			if !internal.Contains(handler.ApiInfo.listOfIndexFieldIsFormUploadFile, i) {
 				field := bodyType.Field(i)
 				fieldType := field.Type
 				if fieldType.Kind() == reflect.Ptr {
@@ -51,7 +100,7 @@ func (sb *swaggerBuild) createRequestBody(handler webHandler) *swaggers3.Request
 		}
 
 		ret := &swaggers3.RequestBody{
-			Required: handler.ApiInfo.Method.Type.In(handler.ApiInfo.IndexOfArgIsRequestBody).Kind() == reflect.Ptr,
+			Required: handler.ApiInfo.method.Type.In(handler.ApiInfo.indexOfArgIsRequestBody).Kind() == reflect.Ptr,
 			Content: map[string]swaggers3.MediaType{
 				"multipart/form-data": {
 					Schema: &swaggers3.Schema{
@@ -64,13 +113,13 @@ func (sb *swaggerBuild) createRequestBody(handler webHandler) *swaggers3.Request
 		return ret
 	} else {
 		ret := &swaggers3.RequestBody{
-			Required: handler.ApiInfo.Method.Type.In(handler.ApiInfo.IndexOfArgIsRequestBody).Kind() == reflect.Ptr,
+			Required: handler.ApiInfo.method.Type.In(handler.ApiInfo.indexOfArgIsRequestBody).Kind() == reflect.Ptr,
 			Content: map[string]swaggers3.MediaType{
 				"application/json": {
 					Schema: &swaggers3.Schema{
 						Type: "object",
 					},
-					Example: reflect.New(handler.ApiInfo.TypeOfRequestBodyElem).Interface(),
+					Example: reflect.New(handler.ApiInfo.typeOfRequestBodyElem).Interface(),
 				},
 			},
 		}

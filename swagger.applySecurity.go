@@ -5,7 +5,7 @@ import (
 )
 
 func (sb *swaggerBuild) applySecurity(handler webHandler, op *swaggers3.Operation) {
-	if handler.ApiInfo.IndexOfArhIsAuthClaims == -1 {
+	if handler.ApiInfo.indexOfArhIsAuthClaims == -1 {
 		return
 
 	}

@@ -1,6 +1,7 @@
 package wx
 
 import (
+	"fmt"
 	"reflect"
 
 	"github.com/vn-go/wx/internal"
@@ -8,11 +9,11 @@ import (
 )
 
 func (sb *swaggerBuild) createRequestBodyForUploadFile(handler webHandler) *swaggers3.RequestBody {
-	if len(handler.ApiInfo.ListOfIndexFieldIsFormUploadFile) > 0 {
+	if len(handler.ApiInfo.listOfIndexFieldIsFormUploadFile) > 0 {
 		props := make(map[string]*swaggers3.Schema)
 
-		for _, index := range handler.ApiInfo.ListOfIndexFieldIsFormUploadFile {
-			field := handler.ApiInfo.TypeOfRequestBodyElem.Field(index)
+		for _, index := range handler.ApiInfo.listOfIndexFieldIsFormUploadFile {
+			field := handler.ApiInfo.typeOfRequestBodyElem.Field(index)
 			typ := field.Type
 			arrayNullable := false
 			if typ.Kind() == reflect.Ptr {
@@ -44,9 +45,9 @@ func (sb *swaggerBuild) createRequestBodyForUploadFile(handler webHandler) *swag
 				}
 			}
 		}
-		for i := 0; i < handler.ApiInfo.TypeOfRequestBodyElem.NumField(); i++ {
-			if !internal.Contains(handler.ApiInfo.ListOfIndexFieldIsFormUploadFile, i) {
-				field := handler.ApiInfo.TypeOfRequestBodyElem.Field(i)
+		for i := 0; i < handler.ApiInfo.typeOfRequestBodyElem.NumField(); i++ {
+			if !internal.Contains(handler.ApiInfo.listOfIndexFieldIsFormUploadFile, i) {
+				field := handler.ApiInfo.typeOfRequestBodyElem.Field(i)
 				fieldType := field.Type
 				if fieldType.Kind() == reflect.Ptr {
 					fieldType = fieldType.Elem()
@@ -96,6 +97,9 @@ func (sb *swaggerBuild) createRequestBodyForUploadFile(handler webHandler) *swag
 			},
 		}
 		return ret
+	} else if handler.ApiInfo.isFormPost && handler.ApiInfo.listOfIndexFieldIsFormUploadFile != nil {
+		fmt.Println("createRequestBodyForUploadFile")
+
 	}
 	return nil
 

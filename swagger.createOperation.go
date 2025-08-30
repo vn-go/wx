@@ -25,7 +25,7 @@ func (sb *swaggerBuild) createOperation(handler webHandler) *swaggers3.Operation
 	}
 
 	ret := &swaggers3.Operation{
-		Tags: []string{handler.ApiInfo.ControllerTypeElem.String()},
+		Tags: []string{handler.ApiInfo.controllerTypeElem.String()},
 
 		Parameters: sb.createParamtersFromUriParams(handler),
 		Responses: map[string]swaggers3.Response{
@@ -39,7 +39,7 @@ func (sb *swaggerBuild) createOperation(handler webHandler) *swaggers3.Operation
 			},
 		},
 	}
-	if len(handler.ApiInfo.ListOfIndexFieldIsFormUploadFile) > 0 {
+	if len(handler.ApiInfo.listOfIndexFieldIsFormUploadFile) > 0 {
 		/*
 					"requestBody": {
 			        "required": true,
@@ -65,8 +65,16 @@ func (sb *swaggerBuild) createOperation(handler webHandler) *swaggers3.Operation
 		return ret
 
 	}
-	if handler.ApiInfo.IndexOfArgIsRequestBody > 0 {
-		ret.RequestBody = sb.createRequestBody(handler)
+	if handler.ApiInfo.indexOfArgIsRequestBody > 0 {
+		if handler.ApiInfo.typeOfRequestBody == utils.formDetect.fileHeaderType ||
+			handler.ApiInfo.typeOfRequestBody == utils.formDetect.fileHeaderTypePtr ||
+			handler.ApiInfo.typeOfRequestBody == utils.formDetect.fileHeaderTypes ||
+			handler.ApiInfo.typeOfRequestBody == utils.formDetect.fileHeaderTypesPtr ||
+			handler.ApiInfo.typeOfRequestBody == utils.formDetect.fileHeaderPtrTypesPtr {
+			ret.RequestBody = sb.createSimpleUploadFile(handler)
+		} else {
+			ret.RequestBody = sb.createRequestBody(handler)
+		}
 
 		//ret.Parameters = append(ret.Parameters, sb.createBodyParameters(handler))
 

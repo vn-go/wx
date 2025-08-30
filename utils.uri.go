@@ -119,25 +119,25 @@ func (h *uriHelperType) TrimSpaces(s string) string {
 	return s[start : end+1]
 }
 func (h *uriHelperType) calculateUrlWithQuery(ret *handlerInfo) {
-	ret.QueryParams = []queryParam{}
+	ret.queryParams = []queryParam{}
 
-	uri := strings.TrimSuffix(strings.Split(ret.Uri, "?")[0], "/")
-	ret.UriQuery = strings.Split(ret.Uri, "?")[1]
-	ret.Uri = uri
+	uri := strings.TrimSuffix(strings.Split(ret.uri, "?")[0], "/")
+	ret.uriQuery = strings.Split(ret.uri, "?")[1]
+	ret.uri = uri
 
-	//ret.UriHandler = strings.TrimSuffix(strings.Split(uri, "?")[0], "/")
-	items := strings.Split(ret.UriQuery, "&")
+	//ret.uriHandler = strings.TrimSuffix(strings.Split(uri, "?")[0], "/")
+	items := strings.Split(ret.uriQuery, "&")
 	for _, x := range items {
 		fieldName := strings.Split(x, "=")[1]
 		fieldName = strings.TrimPrefix(fieldName, "{")
 		fieldName = strings.TrimSuffix(fieldName, "}")
-		field, ok := ret.TypeOfArgIsHttpContextElem.FieldByNameFunc(func(s string) bool {
+		field, ok := ret.typeOfArgIsHttpContextElem.FieldByNameFunc(func(s string) bool {
 			return strings.EqualFold(s, fieldName)
 		})
 		if !ok {
 			continue
 		}
-		ret.QueryParams = append(ret.QueryParams, queryParam{
+		ret.queryParams = append(ret.queryParams, queryParam{
 			Name:       fieldName,
 			FieldIndex: field.Index,
 		})
@@ -161,23 +161,23 @@ func (h *uriHelperType) convertUrlToRegex(urlPattern string) string {
 	return regexPattern
 }
 func (h *uriHelperType) calculateUrl(ret *handlerInfo) {
-	if len(ret.UriParams) > 0 {
-		if !strings.Contains(ret.Uri, "{*") {
-			ret.RegexUri = h.TemplateToRegex(ret.Uri)
-			ret.UriHandler = strings.Split(ret.Uri, "{")[0]
+	if len(ret.uriParams) > 0 {
+		if !strings.Contains(ret.uri, "{*") {
+			ret.regexUri = h.TemplateToRegex(ret.uri)
+			ret.uriHandler = strings.Split(ret.uri, "{")[0]
 		} else {
-			ret.RegexUri = h.convertUrlToRegex(ret.Uri)
-			ret.UriHandler = strings.Split(ret.Uri, "{")[0]
+			ret.regexUri = h.convertUrlToRegex(ret.uri)
+			ret.uriHandler = strings.Split(ret.uri, "{")[0]
 		}
 
-		ret.IsRegexHandler = true
+		ret.isRegexHandler = true
 
 	} else {
-		ret.RegexUri = h.EscapeSpecialCharsForRegex(ret.Uri)
-		if ret.IsRegexHandler {
-			ret.UriHandler = ret.Uri + "/"
+		ret.regexUri = h.EscapeSpecialCharsForRegex(ret.uri)
+		if ret.isRegexHandler {
+			ret.uriHandler = ret.uri + "/"
 		} else {
-			ret.UriHandler = ret.Uri
+			ret.uriHandler = ret.uri
 		}
 	}
 }

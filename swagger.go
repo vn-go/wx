@@ -154,7 +154,7 @@ func (sb *swaggerBuild) LoadFromRoutes() *swaggerBuild {
 		swagerInfo := webHandler{
 			RoutePath: k,
 			ApiInfo:   v.Info,
-			Method:    v.Info.HttpMethod,
+			Method:    v.Info.httpMethod,
 		}
 		handlerList = append(handlerList, swagerInfo)
 

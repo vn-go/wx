@@ -2,25 +2,25 @@ package wx
 
 import "reflect"
 
-func (u *utilsType) ExtractBodInfo(ret *handlerInfo) {
-	for i := 1; i < ret.Method.Type.NumIn(); i++ {
-		if i != ret.IndexOfArgIsHttpContext {
-			ret.IndexOfArgIsRequestBody = i
+func (u *utilsType) ExtractBodyInfo(ret *handlerInfo) {
+	for i := 1; i < ret.method.Type.NumIn(); i++ {
+		if i != ret.indexOfArgIsHttpContext {
+			ret.indexOfArgIsRequestBody = i
 
-			ret.TypeOfRequestBody = ret.Method.Type.In(i)
-			if ret.TypeOfRequestBody.Kind() == reflect.Ptr {
-				ret.TypeOfRequestBodyElem = ret.TypeOfRequestBody.Elem()
+			ret.typeOfRequestBody = ret.method.Type.In(i)
+			if ret.typeOfRequestBody.Kind() == reflect.Ptr {
+				ret.typeOfRequestBodyElem = ret.typeOfRequestBody.Elem()
 			} else {
-				ret.TypeOfRequestBodyElem = ret.TypeOfRequestBody
+				ret.typeOfRequestBodyElem = ret.typeOfRequestBody
 			}
-			if fileUploadField, found := utils.formDetect.FindFormUploadField(ret.TypeOfRequestBodyElem); found {
+			if fileUploadField, found := utils.formDetect.FindFormUploadField(ret.typeOfRequestBodyElem); found {
 				if len(fileUploadField) > 0 {
 					for _, v := range fileUploadField {
-						ret.ListOfIndexFieldIsFormUploadFile = append(ret.ListOfIndexFieldIsFormUploadFile, v[0])
+						ret.listOfIndexFieldIsFormUploadFile = append(ret.listOfIndexFieldIsFormUploadFile, v[0])
 					}
 				}
 
-				ret.IsFormPost = found
+				ret.isFormPost = found
 			}
 			break
 		}

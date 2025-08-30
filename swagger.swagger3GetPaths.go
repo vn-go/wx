@@ -12,7 +12,7 @@ func (sb *swaggerBuild) swagger3GetPaths() *swaggerBuild {
 
 	for _, h := range handlerList {
 
-		swaggerUri := strings.TrimPrefix(strings.ReplaceAll(h.ApiInfo.Uri, "*", ""), "/")
+		swaggerUri := strings.TrimPrefix(strings.ReplaceAll(h.ApiInfo.uri, "*", ""), "/")
 
 		pathItem := swaggers3.PathItem{}
 		pathItemType := reflect.TypeOf(pathItem)

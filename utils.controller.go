@@ -1,6 +1,7 @@
 package wx
 
 import (
+	"fmt"
 	"reflect"
 	"regexp"
 	"strings"
@@ -53,4 +54,34 @@ func (h *controllerHelperType) ToKebabCase(s string) string {
 		return &ret, nil
 	})
 	return *ret
+}
+func (h *controllerHelperType) FindNewMeyhod(info *handlerInfo) (*reflect.Method, error) {
+	for i := 0; i < info.controllerType.NumMethod(); i++ {
+		method := info.controllerType.Method(i)
+		if method.Name == "New" {
+			if method.Type.NumOut() != 1 {
+				return nil, fmt.Errorf("%s.New() must return 1 error", info.controllerType.String())
+			}
+			if !method.Type.Out(0).Implements(reflect.TypeOf((*error)(nil)).Elem()) {
+				return nil, fmt.Errorf("%s.New() must return error", info.controllerType.String())
+
+			}
+
+			return &method, nil
+		}
+	}
+	return nil, nil
+}
+
+func (h *controllerHelperType) Create(info *handlerInfo) (*reflect.Value, error) {
+	controllerValue := reflect.New(info.controllerType.Elem())
+	if info.conrollerNewMethod != nil {
+		ret := info.conrollerNewMethod.Func.Call([]reflect.Value{controllerValue})
+		if ret[0].Elem().Interface() != nil {
+			return nil, ret[0].Elem().Interface().(error)
+		}
+		return &controllerValue, nil
+	}
+	return &controllerValue, nil
+
 }
