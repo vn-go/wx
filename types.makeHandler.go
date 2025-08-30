@@ -39,6 +39,7 @@ func (h *handlerInfo) GetHttpMethod() string {
 	return h.httpMethod
 }
 func (info *handlerInfo) Invoke(w http.ResponseWriter, r *http.Request) (interface{}, error) {
+	contentType := r.Header.Get("Content-Type")
 	controller, err := info.CreateController()
 	if err != nil {
 		// http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -74,23 +75,18 @@ func (info *handlerInfo) Invoke(w http.ResponseWriter, r *http.Request) (interfa
 			}))
 		}
 	}
+	args := make([]reflect.Value, info.method.Type.NumIn())
+	args[0] = *controller
+	args[info.indexOfArgIsHttpContext] = *httpContextValue
+	if info.indexOfArgIsRequestBody != -1 {
+		bodyValue, err := info.GetBodyValue(r, contentType)
+		if err != nil {
+			return nil, err
+		}
+		args[info.indexOfArgIsRequestBody] = bodyValue
 
-	// if info.fieldIndexOfReqController != nil {
-	// 	fieldSet := controller.Elem().FieldByIndex(info.fieldIndexOfReqController)
-	// 	if fieldSet.Kind() == reflect.Ptr {
-	// 		fieldSet = fieldSet.Elem()
-	// 	}
-
-	// 	fieldSet.Set(valueOfReq)
-	// }
-	// if info.fieldIndexOfResController != nil {
-	// 	fieldSet := controller.Elem().FieldByIndex(info.fieldIndexOfResController)
-	// 	if fieldSet.Kind() == reflect.Ptr {
-	// 		fieldSet = fieldSet.Elem()
-	// 	}
-	// 	fieldSet.Set(valueOfReq)
-	// }
-	retRun := info.method.Func.Call([]reflect.Value{*controller, *httpContextValue})
+	}
+	retRun := info.method.Func.Call(args)
 	if len(retRun) == 0 {
 		return nil, nil
 	}
@@ -137,4 +133,19 @@ func (info *handlerInfo) CreateHttpContext(reqValue, resValue reflect.Value) (*r
 	httpContextValue.Elem().FieldByIndex(info.reqFieldIndex).Set(reqValue)
 	httpContextValue.Elem().FieldByIndex(info.resFieldIndex).Set(resValue)
 	return &httpContextValue, nil
+}
+func (info *handlerInfo) GetBodyValue(r *http.Request, contentType string) (reflect.Value, error) {
+	bodyData := reflect.New(info.typeOfRequestBodyElem)
+	if r.Body != nil && r.Body != http.NoBody {
+		defer r.Body.Close() // <-- auto close after read body of request
+		if err := json.NewDecoder(r.Body).Decode(bodyData.Interface()); err != nil {
+
+			return reflect.Value{}, err
+		}
+	} else if info.typeOfRequestBody.Kind() == reflect.Struct {
+
+		return reflect.Value{}, NewBadRequestError("request body is required")
+	}
+
+	return bodyData, nil
 }

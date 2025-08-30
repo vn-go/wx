@@ -88,3 +88,54 @@ func BenchmarkGetMethod(t *testing.B) {
 	//handler.ConrollerNewMethod
 
 }
+func (ex *Example) PostBodyMethod(ctx *HttpContext, data *struct {
+	Name string `json:"name"`
+	Age  int    `json:"age"`
+}) {
+	ex.Ctx.Res.Write([]byte("ok"))
+
+}
+func TestPostBodyMethod(t *testing.T) {
+	handler, err := MakeHandlerFromMethod[Example]("PostBodyMethod")
+	assert.NoError(t, err)
+	assert.NotNil(t, handler)
+	fnHandler := handler.Handler()
+	assert.NotNil(t, fnHandler)
+	req, err := Mock.JsonRequest("POST", handler.GetUriHandler(), struct {
+		Name string `json:"name"`
+		Age  int    `json:"age"`
+	}{
+		Name: "test",
+		Age:  10,
+	})
+	assert.NoError(t, err)
+	res := Mock.NewRes()
+	fnHandler.ServeHTTP(res, req)
+	assert.Equal(t, 200, res.Code)
+
+	//handler.ConrollerNewMethod
+
+}
+func BenchmarkPostBodyMethod(t *testing.B) {
+	handler, err := MakeHandlerFromMethod[Example]("PostBodyMethod")
+	assert.NoError(t, err)
+	assert.NotNil(t, handler)
+	fnHandler := handler.Handler()
+	assert.NotNil(t, fnHandler)
+	req, err := Mock.JsonRequest("POST", handler.GetUriHandler(), struct {
+		Name string `json:"name"`
+		Age  int    `json:"age"`
+	}{
+		Name: "test",
+		Age:  10,
+	})
+	assert.NoError(t, err)
+	res := Mock.NewRes()
+	for i := 0; i < t.N; i++ {
+		fnHandler.ServeHTTP(res, req)
+		//assert.Equal(t, 200, res.Code)
+	}
+
+	//handler.ConrollerNewMethod
+
+}
