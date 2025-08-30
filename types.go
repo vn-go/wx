@@ -12,3 +12,6 @@ type HttpContext struct {
 	Req *http.Request
 	Res http.ResponseWriter
 }
+type Form[T any] struct {
+	Data T
+}

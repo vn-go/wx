@@ -14,7 +14,8 @@ func (u *utilsType) ExtractUriInfo(ret *handlerInfo) {
 		if ret.TypeOfArgIsHttpContextElem.Kind() == reflect.Ptr {
 			ret.TypeOfArgIsHttpContextElem = ret.TypeOfArgIsHttpContext.Elem()
 		}
-		ret.RouteTags = u.Tags.ExtractTags(ret.TypeOfArgIsHttpContextElem)
+
+		ret.RouteTags, _ = u.Tags.ExtractTags(ret.TypeOfArgIsHttpContextElem)
 		ret.Uri = u.Tags.ExtractUriFromTags(ret.RouteTags)
 		if HttpMethod := u.Tags.ExtractHttpMethodFromTags(ret.RouteTags); HttpMethod != "" {
 			ret.HttpMethod = HttpMethod
@@ -61,6 +62,33 @@ func (u *utilsType) ExtractUriInfo(ret *handlerInfo) {
 		utils.Uri.calculateUrl(ret)
 		if ret.IsQueryUri {
 			ret.Uri = ret.Uri + "?" + ret.UriQuery
+		}
+		if len(ret.UriParams) > 0 {
+			for i, x := range ret.UriParams {
+				fieldName := x.Name
+				if fieldName[0] == '*' {
+					fieldName = fieldName[1:]
+				}
+				field, ok := ret.TypeOfArgIsHttpContextElem.FieldByNameFunc(func(s string) bool {
+					return strings.EqualFold(s, fieldName)
+				})
+				if !ok {
+					continue
+				}
+				ret.UriParams[i].FieldIndex = field.Index
+			}
+		}
+		if len(ret.QueryParams) > 0 {
+			for i, x := range ret.QueryParams {
+				fieldName := x.Name
+				field, ok := ret.TypeOfArgIsHttpContextElem.FieldByNameFunc(func(s string) bool {
+					return strings.EqualFold(s, fieldName)
+				})
+				if !ok {
+					continue
+				}
+				ret.QueryParams[i].FieldIndex = field.Index
+			}
 		}
 
 	}

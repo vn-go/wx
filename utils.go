@@ -1,6 +1,7 @@
 package wx
 
 import (
+	"mime/multipart"
 	"reflect"
 	"sync"
 
@@ -31,6 +32,7 @@ type utilsType struct {
 	Tags                 *tagsHelperType
 	Uri                  *uriHelperType
 	controllers          *controllerHelperType
+	formDetect           *formDetectType
 }
 
 func (u *utilsType) GetMethodByName(typ reflect.Type, name string) (reflect.Method, bool) {
@@ -72,6 +74,14 @@ var utils = &utilsType{
 		SpecialCharForRegex: "/\\?.$%^*-+",
 	},
 	controllers: &controllerHelperType{},
+	formDetect: &formDetectType{
+		fileHeaderType:        reflect.TypeOf(multipart.FileHeader{}),
+		fileHeaderTypePtr:     reflect.TypeOf(&multipart.FileHeader{}),
+		fileHeaderTypes:       reflect.TypeOf([]multipart.FileHeader{}),
+		fileHeaderTypesPtr:    reflect.TypeOf(&[]multipart.FileHeader{}),
+		fileHeaderPtrTypes:    reflect.TypeOf([]*multipart.FileHeader{}),
+		fileHeaderPtrTypesPtr: reflect.TypeOf(&[]*multipart.FileHeader{}),
+	},
 }
 
 func init() {

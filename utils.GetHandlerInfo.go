@@ -47,14 +47,17 @@ func (u *utilsType) GetHandlerInfo(method reflect.Method) (*handlerInfo, error) 
 				controllerTypeElem = controllerType.Elem()
 			}
 
-			return &handlerInfo{
+			ret := &handlerInfo{
+				IndexOfArgIsRequestBody: -1,
 				IndexOfArgIsHttpContext: i,
 				ResFieldIndex:           resIndex,
 				ReqFieldIndex:           reqIndex,
 				Method:                  method,
 				ControllerTypeElem:      controllerTypeElem,
 				ControllerType:          controllerType,
-			}, nil
+			}
+
+			return ret, nil
 		}
 	}
 	return nil, nil

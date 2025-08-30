@@ -37,7 +37,7 @@ func TestGetHandlerInfo(t *testing.T) {
 	info, err := mock.GetHandlerInfo[ObjTest001](mt)
 	assert.NoError(t, err)
 	assert.NotNil(t, info)
-	assert.Equal(t, 1, info.IndexOfArg)
+	assert.Equal(t, 1, info.IndexOfArgIsHttpContext)
 	assert.Equal(t, []int{0}, info.ReqFieldIndex)
 	assert.Equal(t, []int{1}, info.ResFieldIndex)
 
