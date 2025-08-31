@@ -1,7 +1,6 @@
 package wx
 
 import (
-	"fmt"
 	"reflect"
 	"sync"
 )
@@ -42,7 +41,7 @@ func (fd *formDetectType) FindFormUploadField(typ reflect.Type) ([][]int, bool) 
 		typ = typ.Elem()
 	}
 	if typ.Kind() != reflect.Struct {
-		fmt.Println(typ.String())
+
 		if typ == fd.fileHeaderType ||
 			typ == fd.fileHeaderTypePtr ||
 			typ == fd.fileHeaderPtrTypes ||

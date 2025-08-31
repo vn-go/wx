@@ -59,8 +59,8 @@ type handlerInfo struct {
 	indexOfArhIsAuthClaims           int
 	indexOfArgIsRequestBody          int
 	isFormPost                       bool
-	formPostTypeEle                  reflect.Type
-	formPostType                     reflect.Type
+	// formPostTypeEle                  reflect.Type
+	// formPostType                     reflect.Type
 	httpMethod                       string
 
 	routeTags                          []string

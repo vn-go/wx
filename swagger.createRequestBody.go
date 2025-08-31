@@ -59,7 +59,7 @@ func (sb *swaggerBuild) createSimpleUploadFile(handler webHandler) *swaggers3.Re
 func (sb *swaggerBuild) createRequestBody(handler webHandler) *swaggers3.RequestBody {
 	if handler.ApiInfo.isFormPost {
 		props := make(map[string]*swaggers3.Schema)
-		bodyType := handler.ApiInfo.formPostTypeEle
+		bodyType := handler.ApiInfo.typeOfRequestBodyElem
 		for i := 0; i < bodyType.NumField(); i++ {
 			if !internal.Contains(handler.ApiInfo.listOfIndexFieldIsFormUploadFile, i) {
 				field := bodyType.Field(i)

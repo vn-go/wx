@@ -10,8 +10,10 @@ func (u *utilsType) ExtractBodyInfo(ret *handlerInfo) {
 			ret.typeOfRequestBody = ret.method.Type.In(i)
 			if ret.typeOfRequestBody.Kind() == reflect.Ptr {
 				ret.typeOfRequestBodyElem = ret.typeOfRequestBody.Elem()
+				ret.isFormPost = isFormType(ret.typeOfRequestBodyElem)
 			} else {
 				ret.typeOfRequestBodyElem = ret.typeOfRequestBody
+				ret.isFormPost = isFormType(ret.typeOfRequestBodyElem)
 			}
 			if fileUploadField, found := utils.formDetect.FindFormUploadField(ret.typeOfRequestBodyElem); found {
 				if len(fileUploadField) > 0 {
@@ -20,7 +22,7 @@ func (u *utilsType) ExtractBodyInfo(ret *handlerInfo) {
 					}
 				}
 
-				ret.isFormPost = found
+				ret.isFormPost = found || isFormType(ret.typeOfRequestBodyElem)
 			}
 			break
 		}

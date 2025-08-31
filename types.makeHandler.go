@@ -3,11 +3,71 @@ package wx
 import (
 	"encoding/json"
 	"fmt"
+	"mime/multipart"
 	"net/http"
 	"reflect"
+	"strings"
 	"sync"
+
+	"github.com/vn-go/wx/internal"
 )
 
+// helper for consistent JSON payload
+func toJSON(code, message string) []byte {
+	resp := map[string]string{
+		"error":   code,
+		"message": message,
+	}
+	b, _ := json.Marshal(resp)
+	return b
+}
+func (h *handlerInfo) catchError(w http.ResponseWriter, err error) {
+	if err == nil {
+		return
+	}
+
+	var status int
+	var body []byte
+
+	switch e := err.(type) {
+	// ------------------- 4xx Client Errors -------------------
+	case *BadRequestError, *ParamMissMatchError, *UriParamParseError,
+		*UriParamConvertError, *RequireError, *BodyParseError, *FileParseError:
+		status = http.StatusBadRequest // 400
+		body = toJSON("bad_request", e.Error())
+
+	case *MethodNotAllowError:
+		status = http.StatusMethodNotAllowed // 405
+		body = toJSON("method_not_allowed", e.Error())
+
+	case *NewMethodOfAuthNotFoundError:
+		status = http.StatusUnauthorized // 401
+		body = toJSON("unauthorized", e.Error())
+
+	case *RegexUriNotMatchError:
+		status = http.StatusNotFound // 404
+		body = toJSON("not_found", e.Error())
+
+	case *UnSupportError, *UnacceptableContentError:
+		status = http.StatusUnsupportedMediaType // 415
+		body = []byte(e.Error())                 // already JSON in UnacceptableContentError
+
+	// ------------------- 5xx Server Errors -------------------
+	case *ServiceInitError, *ServerError:
+		status = http.StatusInternalServerError // 500
+		body = toJSON("server_error", e.Error())
+
+	default:
+		// fallback for unexpected error
+		status = http.StatusInternalServerError
+		body = toJSON("server_error", err.Error())
+	}
+
+	// Write response
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	_, _ = w.Write(body)
+}
 func (h *handlerInfo) Handler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != h.httpMethod {
@@ -18,7 +78,7 @@ func (h *handlerInfo) Handler() http.HandlerFunc {
 
 		ret, err := h.Invoke(w, r)
 		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
+			h.catchError(w, err)
 			return
 		}
 		if contentType == "application/json" && !h.isNoOutPut {
@@ -135,6 +195,23 @@ func (info *handlerInfo) CreateHttpContext(reqValue, resValue reflect.Value) (*r
 	return &httpContextValue, nil
 }
 func (info *handlerInfo) GetBodyValue(r *http.Request, contentType string) (reflect.Value, error) {
+	//"multipart/form-data; boundary=bc93ed97d895d9ff5f8eb8f994205bc3f8184e4f5d0668de8791448fe447"
+
+	if strings.HasPrefix(contentType, "multipart/form-data; ") {
+		return info.GetMultipartFormDataValue(r)
+	}
+	if contentType == "application/json" && info.isFormPost {
+		/*
+						{
+			  "error": "unsupported_media_type",
+			  "message": "Content-Type application/json is not supported. Please use multipart/form-data."
+			}
+		*/
+		return reflect.Value{}, NewUnacceptableContentError(
+			"unsupported_media_type",
+			"Content-Type application/json is not supported. Please use multipart/form-data.",
+		)
+	}
 	bodyData := reflect.New(info.typeOfRequestBodyElem)
 	if r.Body != nil && r.Body != http.NoBody {
 		defer r.Body.Close() // <-- auto close after read body of request
@@ -148,4 +225,194 @@ func (info *handlerInfo) GetBodyValue(r *http.Request, contentType string) (refl
 	}
 
 	return bodyData, nil
+}
+func (info *handlerInfo) getFieldByName(typ reflect.Type, fieldName string) *reflect.StructField {
+	key := typ.String() + "/RequestExecutor/GetFieldByName/" + fieldName
+	ret, err := internal.OnceCall(key, func() (*reflect.StructField, error) {
+		ret, ok := typ.FieldByNameFunc(func(s string) bool {
+			return strings.EqualFold(s, fieldName)
+		})
+		if !ok {
+			return nil, nil
+		}
+		return &ret, nil
+	})
+	if err != nil {
+		return nil
+	}
+	return ret
+}
+func (info *handlerInfo) getMaxMemory() int64 {
+	return 20 << 20
+}
+func (info *handlerInfo) GetMultipartFormDataValue(r *http.Request) (reflect.Value, error) {
+	if isFormType(info.typeOfRequestBodyElem) {
+		ret := reflect.New(info.typeOfRequestBodyElem)
+		if fieldData, ok := info.typeOfRequestBodyElem.FieldByName("Data"); ok {
+			dataVal, err := info.getMultipartFormDataValueByType(fieldData.Type, r)
+			if err != nil {
+				return reflect.Value{}, NewServerError("Internal server error", err)
+			}
+			ret.Elem().FieldByIndex(fieldData.Index).Set(dataVal)
+			if info.typeOfRequestBody.Kind() == reflect.Struct {
+				return ret.Elem(), nil
+			}
+			return ret, nil
+		} else {
+			return reflect.Value{}, NewServerError("Internal server error", fmt.Errorf("%s do not have Data Field", info.typeOfRequestBodyElem.String()))
+		}
+
+	} else {
+		return info.getMultipartFormDataValueByType(info.typeOfRequestBodyElem, r)
+	}
+}
+func (info *handlerInfo) getMultipartFormDataValueByType(bodyType reflect.Type, r *http.Request) (reflect.Value, error) {
+	var target reflect.Value
+	var targetType reflect.Type
+
+	ret := reflect.New(bodyType)
+
+	target = ret.Elem()
+	targetType = bodyType
+	if targetType.Kind() == reflect.Ptr {
+		targetType = targetType.Elem()
+	}
+
+	if targetType == reflect.TypeFor[multipart.FileHeader]() {
+		if err := r.ParseMultipartForm(info.getMaxMemory()); err != nil {
+			return reflect.Value{}, NewFileParseError("error parsing multipart form", err)
+		}
+		for _, v := range r.MultipartForm.File {
+			if len(v) > 0 {
+				return reflect.ValueOf(*v[0]), nil
+			}
+
+		}
+		return reflect.Value{}, NewRequireError([]string{}, "file upload is missing")
+	}
+	// 2- none-require file upload
+	if targetType == reflect.TypeFor[*multipart.FileHeader]() {
+		if err := r.ParseMultipartForm(info.getMaxMemory()); err != nil {
+			return reflect.Value{}, NewFileParseError("error parsing multipart form", err)
+		}
+		for _, v := range r.MultipartForm.File {
+			if len(v) > 0 {
+				return reflect.ValueOf(*v[0]), nil
+			}
+
+		}
+		return ret, nil
+	}
+	// 3- multifile upload
+	if targetType == reflect.TypeFor[[]multipart.FileHeader]() {
+		if err := r.ParseMultipartForm(info.getMaxMemory()); err != nil {
+			return reflect.Value{}, NewFileParseError("error parsing multipart form", err)
+		}
+		for _, v := range r.MultipartForm.File {
+			retFiles := []multipart.FileHeader{}
+
+			for _, x := range v {
+				retFiles = append(retFiles, *x)
+			}
+			return reflect.ValueOf(retFiles), nil
+
+		}
+		return ret, nil
+	}
+	// 4- multifile upload with nullable of element
+	if targetType == reflect.TypeFor[[]*multipart.FileHeader]() {
+		if err := r.ParseMultipartForm(info.getMaxMemory()); err != nil {
+			return reflect.Value{}, NewFileParseError("error parsing multipart form", err)
+		}
+		for _, v := range r.MultipartForm.File {
+
+			return reflect.ValueOf(v), nil
+
+		}
+		return ret, nil
+	}
+	// 5- multifile upload with nullable of element and nullable of array
+	if targetType == reflect.TypeFor[*[]*multipart.FileHeader]() {
+		if err := r.ParseMultipartForm(info.getMaxMemory()); err != nil {
+			return reflect.Value{}, NewFileParseError("error parsing multipart form", err)
+		}
+		for _, v := range r.MultipartForm.File {
+			retFiles := []*multipart.FileHeader{}
+			retFiles = append(retFiles, v...)
+			return reflect.ValueOf(&retFiles), nil
+
+		}
+		return ret, nil
+	}
+	var formData map[string][]string
+	var files map[string][]*multipart.FileHeader
+	//fieldsIsFile := reflect.StructField{}
+	//contentType := r.Header.Get("Content-Type")
+	if err := r.ParseMultipartForm(info.getMaxMemory()); err != nil {
+		return reflect.Value{}, NewFileParseError("error parsing multipart form", err)
+	}
+	formData = r.MultipartForm.Value
+	files = r.MultipartForm.File //<-- wx tu dong lay file theo kieu nay
+	fmt.Println(targetType.String())
+	for key, values := range formData {
+		field := info.getFieldByName(targetType, key)
+		if field == nil || len(values) == 0 {
+			continue
+		}
+		fv := target.FieldByIndex(field.Index)
+
+		switch fv.Kind() {
+		case reflect.String:
+			fv.SetString(values[0])
+		case reflect.Slice:
+			if fv.Type().Elem().Kind() == reflect.String {
+				fv.Set(reflect.ValueOf(values))
+			}
+		case reflect.Ptr:
+			elemKind := fv.Type().Elem().Kind()
+			if elemKind == reflect.String {
+				ptr := reflect.New(fv.Type().Elem())
+				ptr.Elem().SetString(values[0])
+				fv.Set(ptr)
+			} else if elemKind == reflect.Struct {
+				ptr := reflect.New(fv.Type().Elem())
+				if err := json.Unmarshal([]byte(values[0]), ptr.Interface()); err != nil {
+					return reflect.Value{}, err
+				}
+				fv.Set(ptr)
+			}
+		case reflect.Struct:
+			if err := json.Unmarshal([]byte(values[0]), fv.Addr().Interface()); err != nil {
+				return reflect.Value{}, err
+			}
+		}
+	}
+
+	// set files
+	for key, fhArr := range files {
+		field := info.getFieldByName(targetType, key)
+		if field == nil || len(fhArr) == 0 {
+			continue
+		}
+		fv := target.FieldByIndex(field.Index)
+		ft := fv.Type()
+
+		switch {
+		case ft == reflect.TypeOf(&multipart.FileHeader{}):
+			fv.Set(reflect.ValueOf(fhArr[0]))
+		case ft == reflect.TypeOf([]*multipart.FileHeader{}):
+			fv.Set(reflect.ValueOf(fhArr))
+		case ft == reflect.TypeOf([]multipart.FileHeader{}):
+			slice := make([]multipart.FileHeader, len(fhArr))
+			for i, f := range fhArr {
+				slice[i] = *f
+			}
+			fv.Set(reflect.ValueOf(slice))
+		}
+	}
+	if bodyType.Kind() == reflect.Struct {
+		return ret.Elem(), nil
+	}
+
+	return ret, nil
 }

@@ -207,3 +207,50 @@ func NewUnSupportError(message string) error {
 		Message: message,
 	}
 }
+
+type ServerError struct {
+	// error form system, nere show at front-end
+	Err     error
+	Message string
+}
+
+func (e *ServerError) Error() string {
+	return e.Message
+}
+func NewServerError(msg string, err error) error {
+	return &ServerError{
+		Err:     err,
+		Message: msg,
+	}
+}
+
+/*
+	{
+	  "error": "unsupported_media_type",
+	  "message": "Content-Type application/json is not supported. Please use multipart/form-data."
+	}
+*/
+type unacceptableContentErrorData struct {
+	Error   string `json:"error"`
+	Message string `json:"message"`
+}
+type UnacceptableContentError struct {
+	Data unacceptableContentErrorData
+}
+
+func (e *UnacceptableContentError) Error() string {
+	bff, err := json.Marshal(e.Data)
+	if err != nil {
+		return NewServerError("Internal server error", err).Error()
+	}
+	return string(bff)
+
+}
+func NewUnacceptableContentError(code, message string) error {
+	return &UnacceptableContentError{
+		Data: unacceptableContentErrorData{
+			Error:   code,
+			Message: message,
+		},
+	}
+}
