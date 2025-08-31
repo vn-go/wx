@@ -289,8 +289,9 @@ func BenchmarkSimpleUploadFiles2(t *testing.B) {
 	}
 
 }
-func (ex *Example) FormPost(ctx *HttpContext, data *Form[User]) {
-	fmt.Println(data)
+func (ex *Example) FormPost(ctx *HttpContext, data *Form[User]) (*User, error) {
+	ret := data.Data
+	return &ret, nil
 }
 func TestFormPost(t *testing.T) {
 	handler, err := MakeHandlerFromMethod[Example]("FormPost")
@@ -298,19 +299,99 @@ func TestFormPost(t *testing.T) {
 	assert.NotNil(t, handler)
 	fnHandler := handler.Handler()
 	assert.NotNil(t, fnHandler)
-	// mockFiles := []mockFile{}
 
-	// postdata := struct {
-	// 	Files []mockFile
-	// 	User  User
-	// }{
-	// 	Files: mockFiles,
-	// 	User: User{
-	// 		Code: "adadas",
-	// 		Name: "dsadasdasdadad",
-	// 	},
-	// }
 	req, err := Mock.FormRequest("POST", handler.GetUriHandler(), User{
+		Code: "adadas",
+		Name: "dsadasdasdadad",
+	})
+	assert.NoError(t, err)
+	res := Mock.NewRes()
+	fnHandler.ServeHTTP(res, req)
+	assert.Equal(t, 200, res.Code)
+}
+func BenchmarkFormPost(t *testing.B) {
+	handler, err := MakeHandlerFromMethod[Example]("FormPost")
+	assert.NoError(t, err)
+	assert.NotNil(t, handler)
+	fnHandler := handler.Handler()
+	assert.NotNil(t, fnHandler)
+
+	req, err := Mock.FormRequest("POST", handler.GetUriHandler(), User{
+		Code: "adadas",
+		Name: "dsadasdasdadad",
+	})
+	assert.NoError(t, err)
+	res := Mock.NewRes()
+	t.ResetTimer()
+	t.ReportAllocs()
+	for i := 0; i < t.N; i++ {
+		fnHandler.ServeHTTP(res, req)
+		//assert.Equal(t, 200, res.Code)
+	}
+
+}
+func (ex *Example) FormPost2(ctx *struct {
+	HttpContext `route:"@/files/{FileName}"`
+	FileName    string
+}, data *Form[User]) (*User, error) {
+	ret := data.Data
+	return &ret, nil
+}
+func TestFormPost2(t *testing.T) {
+	handler, err := MakeHandlerFromMethod[Example]("FormPost2")
+	assert.NoError(t, err)
+	assert.NotNil(t, handler)
+	fnHandler := handler.Handler()
+	assert.NotNil(t, fnHandler)
+
+	req, err := Mock.FormRequest("POST", handler.GetUriHandler()+"Test.txt", User{
+		Code: "adadas",
+		Name: "dsadasdasdadad",
+	})
+	assert.NoError(t, err)
+	res := Mock.NewRes()
+	fnHandler.ServeHTTP(res, req)
+	assert.Equal(t, 200, res.Code)
+}
+func (ex *Example) FormPost3(ctx *struct {
+	HttpContext `route:"@/files/{*filePath}"`
+	FilePath    string
+}, data *Form[User]) (*User, error) {
+	ret := data.Data
+	return &ret, nil
+}
+func TestFormPost3(t *testing.T) {
+	handler, err := MakeHandlerFromMethod[Example]("FormPost3")
+	assert.NoError(t, err)
+	assert.NotNil(t, handler)
+	fnHandler := handler.Handler()
+	assert.NotNil(t, fnHandler)
+
+	req, err := Mock.FormRequest("POST", handler.GetUriHandler()+"dasda/dsad/sad/das/Test.txt", User{
+		Code: "adadas",
+		Name: "dsadasdasdadad",
+	})
+	assert.NoError(t, err)
+	res := Mock.NewRes()
+	fnHandler.ServeHTTP(res, req)
+	assert.Equal(t, 200, res.Code)
+}
+func (ex *Example) FormPost4(ctx *struct {
+	HttpContext `route:"@/files/{*filePath}?dirPath={dirPath}"`
+	FilePath    string
+	DirPath     string
+}, data *Form[User]) (*User, error) {
+	ret := data.Data
+	return &ret, nil
+}
+func TestFormPost4(t *testing.T) {
+	handler, err := MakeHandlerFromMethod[Example]("FormPost4")
+	assert.NoError(t, err)
+	assert.NotNil(t, handler)
+	fnHandler := handler.Handler()
+	assert.NotNil(t, fnHandler)
+
+	req, err := Mock.FormRequest("POST", handler.GetUriHandler()+"dasda/dsad/sad/das/Test.txt?dirPath=/abd/cde", User{
 		Code: "adadas",
 		Name: "dsadasdasdadad",
 	})

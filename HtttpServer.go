@@ -93,3 +93,7 @@ func (s *HtttpServer) Start() error {
 	fmt.Println("Server listening at", addr)
 	return s.server.ListenAndServe()
 }
+func (s *HtttpServer) Middleware(fn func(w http.ResponseWriter, r *http.Request, next http.HandlerFunc)) *HtttpServer {
+	s.mws = append(s.mws, fn)
+	return s
+}

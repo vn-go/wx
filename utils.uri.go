@@ -162,6 +162,7 @@ func (h *uriHelperType) convertUrlToRegex(urlPattern string) string {
 }
 func (h *uriHelperType) calculateUrl(ret *handlerInfo) {
 	if len(ret.uriParams) > 0 {
+
 		if !strings.Contains(ret.uri, "{*") {
 			ret.regexUri = h.TemplateToRegex(ret.uri)
 			ret.uriHandler = strings.Split(ret.uri, "{")[0]
@@ -171,6 +172,7 @@ func (h *uriHelperType) calculateUrl(ret *handlerInfo) {
 		}
 
 		ret.isRegexHandler = true
+		ret.regexUriFind = *regexp.MustCompile(strings.ReplaceAll(strings.TrimPrefix(ret.regexUri, "^"), "/", "\\/"))
 
 	} else {
 		ret.regexUri = h.EscapeSpecialCharsForRegex(ret.uri)

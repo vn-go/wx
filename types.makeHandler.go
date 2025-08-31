@@ -74,18 +74,39 @@ func (h *handlerInfo) Handler() http.HandlerFunc {
 			w.WriteHeader(http.StatusMethodNotAllowed)
 			return
 		}
-		contentType := r.Header.Get("Content-Type")
+		//contentType := r.Header.Get("Content-Type")
 
 		ret, err := h.Invoke(w, r)
 		if err != nil {
 			h.catchError(w, err)
 			return
 		}
-		if contentType == "application/json" && !h.isNoOutPut {
-			w.Header().Set("Content-Type", "application/json")
-			//write ret to
-			if err := json.NewEncoder(w).Encode(ret); err != nil {
-				http.Error(w, fmt.Sprintf("Error encoding JSON: %s", err), http.StatusInternalServerError)
+		if ret != nil && !h.isNoOutPut {
+			if len(ret) > 1 {
+				retData := []any{}
+				for _, x := range ret {
+					if x.Kind() == reflect.Ptr {
+						x = x.Elem()
+					}
+					retData = append(retData, x.Interface())
+
+				}
+				w.Header().Set("Content-Type", "application/json")
+				//write ret to
+				if err := json.NewEncoder(w).Encode(retData); err != nil {
+					h.catchError(w, NewServerError("Internal server error", err))
+					//http.Error(w, fmt.Sprintf("Error encoding JSON: %s", err), http.StatusInternalServerError)
+				}
+			} else {
+				w.Header().Set("Content-Type", "application/json")
+				//write ret to
+				if ret[0].Kind() == reflect.Ptr {
+					ret[0] = ret[0].Elem()
+
+				}
+				if err := json.NewEncoder(w).Encode(ret[0].Interface()); err != nil {
+					h.catchError(w, NewServerError("Internal server error", err))
+				}
 			}
 
 		}
@@ -98,7 +119,7 @@ func (h *handlerInfo) GetUriHandler() string {
 func (h *handlerInfo) GetHttpMethod() string {
 	return h.httpMethod
 }
-func (info *handlerInfo) Invoke(w http.ResponseWriter, r *http.Request) (interface{}, error) {
+func (info *handlerInfo) Invoke(w http.ResponseWriter, r *http.Request) ([]reflect.Value, error) {
 	contentType := r.Header.Get("Content-Type")
 	controller, err := info.CreateController()
 	if err != nil {
@@ -110,6 +131,10 @@ func (info *handlerInfo) Invoke(w http.ResponseWriter, r *http.Request) (interfa
 	httpContextValue, err := info.CreateHttpContext(valueOfReq, valueOfRes)
 	if err != nil {
 		// http.Error(w, err.Error(), http.StatusInternalServerError)
+		return nil, err
+	}
+	err = info.applyUri(*httpContextValue, r)
+	if err != nil {
 		return nil, err
 	}
 	if info.conrollerNewMethod != nil {
@@ -150,11 +175,11 @@ func (info *handlerInfo) Invoke(w http.ResponseWriter, r *http.Request) (interfa
 	if len(retRun) == 0 {
 		return nil, nil
 	}
-	if retRun[len(retRun)-1].Elem().Interface() != nil {
-		if err, ok := retRun[len(retRun)-1].Elem().Interface().(error); ok {
+	last := retRun[len(retRun)-1]        // last return value
+	if last.IsValid() && !last.IsNil() { // safe checks
+		if err, ok := last.Interface().(error); ok {
 			return nil, err
 		}
-		return retRun, nil
 	}
 	return retRun[0 : len(retRun)-1], nil
 }
@@ -353,7 +378,7 @@ func (info *handlerInfo) getMultipartFormDataValueByType(bodyType reflect.Type, 
 	}
 	formData = r.MultipartForm.Value
 	files = r.MultipartForm.File //<-- wx tu dong lay file theo kieu nay
-	fmt.Println(targetType.String())
+
 	for key, values := range formData {
 		field := info.getFieldByName(targetType, key)
 		if field == nil || len(values) == 0 {
@@ -415,4 +440,82 @@ func (info *handlerInfo) getMultipartFormDataValueByType(bodyType reflect.Type, 
 	}
 
 	return ret, nil
+}
+func (info *handlerInfo) GetParamFieldOfHandlerContext(typ reflect.Type, fieldName string) (reflect.StructField, bool) {
+	key := typ.String() + "/" + fieldName
+	ret, err := internal.OnceCall(key, func() (*reflect.StructField, error) {
+		field, ok := typ.FieldByNameFunc(func(s string) bool {
+			return strings.EqualFold(s, fieldName)
+		})
+		if !ok {
+			return nil, nil
+		}
+		return &field, nil
+	})
+	if err != nil {
+		return reflect.StructField{}, false
+	}
+	if ret == nil {
+		return reflect.StructField{}, false
+	}
+	return *ret, true
+
+}
+func (info *handlerInfo) applyUri(contextValue reflect.Value, r *http.Request) error {
+	if info.isRegexHandler {
+		placeHolders := info.regexUriFind.FindAllStringSubmatch(r.URL.Path, -1)
+		if len(placeHolders) == 0 {
+
+			return NewRegexUriNotMatchError("regex uri not match")
+		}
+		for i := 1; i < len(placeHolders[0]); i++ {
+			fieldIndex := info.uriParams[i-1].FieldIndex
+			fieldSet := contextValue.Elem().FieldByIndex(fieldIndex)
+			fieldSet.Set(reflect.ValueOf(placeHolders[0][i]))
+			//field := contextValue.Type().Elem().FieldByIndex(fieldIndex)
+
+		}
+		if info.isQueryUri {
+			// url, err := r.URL.Parse(r.URL.Path)
+			// if err != nil {
+			// 	return NewServerError("can not read url", err)
+			// }
+
+			query := r.URL.Query()
+			fmt.Println(info.queryParams)
+			typeOfContextValue := contextValue.Type().Elem()
+			for k, x := range query {
+				field, ok := info.GetParamFieldOfHandlerContext(typeOfContextValue, k)
+				if ok {
+					fieldSet := contextValue.Elem().FieldByIndex(field.Index)
+					if fieldSet.IsValid() {
+						if fieldSet.Kind() == reflect.String {
+							fieldSet.SetString(x[0])
+						} else if fieldSet.Kind() == reflect.Ptr {
+							if fieldSet.Type().Elem().Kind() == reflect.String {
+								fieldSet.Set(reflect.ValueOf(&x[0]))
+							}
+						} else if fieldSet.Kind() == reflect.Slice {
+							if fieldSet.Type().Elem().Kind() == reflect.String {
+								fieldSet.Set(reflect.ValueOf(x))
+							} else if fieldSet.Type().Elem().Kind() == reflect.Ptr {
+								if fieldSet.Type().Elem().Elem().Kind() == reflect.String {
+									vals := make([]*string, len(x))
+									for i, v := range x {
+										vals[i] = &v
+									}
+
+									fieldSet.Set(reflect.ValueOf(vals))
+								}
+							}
+						}
+
+					}
+				}
+
+			}
+
+		}
+	}
+	return nil
 }

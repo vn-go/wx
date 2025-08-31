@@ -10,5 +10,5 @@ type Media struct {
 }
 
 func (m *Media) Upload(ctx *wx.HttpContext, file multipart.FileHeader) (string, error) {
-	return "", nil
+	return "heelo", nil
 }

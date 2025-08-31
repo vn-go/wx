@@ -3,7 +3,10 @@
 */
 package wx
 
-import "reflect"
+import (
+	"reflect"
+	"regexp"
+)
 
 type queryParam struct {
 	Name       string
@@ -61,10 +64,12 @@ type handlerInfo struct {
 	isFormPost                       bool
 	// formPostTypeEle                  reflect.Type
 	// formPostType                     reflect.Type
-	httpMethod                       string
+	httpMethod string
 
-	routeTags                          []string
-	queryParams                        []queryParam
+	routeTags   []string
+	queryParams []queryParam
+
+	regexUriFind                       regexp.Regexp
 	regexUri                           string
 	uriHandler                         string
 	isRegexHandler                     bool
