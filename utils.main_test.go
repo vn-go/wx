@@ -144,9 +144,9 @@ func BenchmarkPostBodyMethod(t *testing.B) {
 
 var count = 0
 
-func (ex *Example) SimpleUpload(ctx *HttpContext, file *multipart.File) {
+func (ex *Example) SimpleUpload(ctx *HttpContext, file *multipart.FileHeader) {
 	//count++
-	//fmt.Println(file)
+	fmt.Println(file)
 }
 func TestSimpleUpload(t *testing.T) {
 	handler, err := MakeHandlerFromMethod[Example]("SimpleUpload")
@@ -376,6 +376,25 @@ func TestFormPost3(t *testing.T) {
 	fnHandler.ServeHTTP(res, req)
 	assert.Equal(t, 200, res.Code)
 }
+func BenchmarkFormPost3(t *testing.B) {
+	handler, err := MakeHandlerFromMethod[Example]("FormPost3")
+	assert.NoError(t, err)
+	assert.NotNil(t, handler)
+	fnHandler := handler.Handler()
+	assert.NotNil(t, fnHandler)
+
+	req, err := Mock.FormRequest("POST", handler.GetUriHandler()+"dasda/dsad/sad/das/Test.txt", User{
+		Code: "adadas",
+		Name: "dsadasdasdadad",
+	})
+	assert.NoError(t, err)
+	res := Mock.NewRes()
+	for i := 0; i < t.N; i++ {
+		fnHandler.ServeHTTP(res, req)
+	}
+
+	//assert.Equal(t, 200, res.Code)
+}
 func (ex *Example) FormPost4(ctx *struct {
 	HttpContext `route:"@/files/{*filePath}?dirPath={dirPath}"`
 	FilePath    string
@@ -386,6 +405,30 @@ func (ex *Example) FormPost4(ctx *struct {
 }
 func TestFormPost4(t *testing.T) {
 	handler, err := MakeHandlerFromMethod[Example]("FormPost4")
+	assert.NoError(t, err)
+	assert.NotNil(t, handler)
+	fnHandler := handler.Handler()
+	assert.NotNil(t, fnHandler)
+
+	req, err := Mock.FormRequest("POST", handler.GetUriHandler()+"dasda/dsad/sad/das/Test.txt?dirPath=/abd/cde", User{
+		Code: "adadas",
+		Name: "dsadasdasdadad",
+	})
+	assert.NoError(t, err)
+	res := Mock.NewRes()
+	fnHandler.ServeHTTP(res, req)
+	assert.Equal(t, 200, res.Code)
+}
+func (ex *Example) FormPost5(ctx *struct {
+	HttpContext `route:"@/files/{*filePath}?dirPath={dirPath}"`
+	FilePath    string
+	DirPath     string
+}, data *Form[*multipart.FileHeader]) (*User, error) {
+
+	return nil, nil
+}
+func TestFormPost5(t *testing.T) {
+	handler, err := MakeHandlerFromMethod[Example]("FormPost5")
 	assert.NoError(t, err)
 	assert.NotNil(t, handler)
 	fnHandler := handler.Handler()

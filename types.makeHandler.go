@@ -104,9 +104,16 @@ func (h *handlerInfo) Handler() http.HandlerFunc {
 					ret[0] = ret[0].Elem()
 
 				}
-				if err := json.NewEncoder(w).Encode(ret[0].Interface()); err != nil {
-					h.catchError(w, NewServerError("Internal server error", err))
+				if ret[0].IsValid() {
+					if err := json.NewEncoder(w).Encode(ret[0].Interface()); err != nil {
+						h.catchError(w, NewServerError("Internal server error", err))
+					}
+				} else {
+					if err := json.NewEncoder(w).Encode(nil); err != nil {
+						h.catchError(w, NewServerError("Internal server error", err))
+					}
 				}
+
 			}
 
 		}
@@ -252,6 +259,12 @@ func (info *handlerInfo) GetBodyValue(r *http.Request, contentType string) (refl
 	return bodyData, nil
 }
 func (info *handlerInfo) getFieldByName(typ reflect.Type, fieldName string) *reflect.StructField {
+	if typ.Kind() == reflect.Ptr {
+		typ = typ.Elem()
+	}
+	if typ.Kind() != reflect.Struct {
+		return nil
+	}
 	key := typ.String() + "/RequestExecutor/GetFieldByName/" + fieldName
 	ret, err := internal.OnceCall(key, func() (*reflect.StructField, error) {
 		ret, ok := typ.FieldByNameFunc(func(s string) bool {
@@ -278,7 +291,17 @@ func (info *handlerInfo) GetMultipartFormDataValue(r *http.Request) (reflect.Val
 			if err != nil {
 				return reflect.Value{}, NewServerError("Internal server error", err)
 			}
-			ret.Elem().FieldByIndex(fieldData.Index).Set(dataVal)
+			fieldSet := ret.Elem().FieldByIndex(fieldData.Index)
+			if fieldSet.CanConvert(dataVal.Type()) {
+				fieldSet.Set(dataVal)
+			} else if dataVal.Kind() == reflect.Ptr {
+				dataVal = dataVal.Elem()
+				if fieldSet.CanConvert(dataVal.Type()) {
+					fieldSet.Set(dataVal)
+				}
+
+			}
+
 			if info.typeOfRequestBody.Kind() == reflect.Struct {
 				return ret.Elem(), nil
 			}
@@ -288,7 +311,8 @@ func (info *handlerInfo) GetMultipartFormDataValue(r *http.Request) (reflect.Val
 		}
 
 	} else {
-		return info.getMultipartFormDataValueByType(info.typeOfRequestBodyElem, r)
+		fmt.Println(info.typeOfRequestBody.String())
+		return info.getMultipartFormDataValueByType(info.typeOfRequestBody, r)
 	}
 }
 func (info *handlerInfo) getMultipartFormDataValueByType(bodyType reflect.Type, r *http.Request) (reflect.Value, error) {
@@ -303,7 +327,7 @@ func (info *handlerInfo) getMultipartFormDataValueByType(bodyType reflect.Type, 
 		targetType = targetType.Elem()
 	}
 
-	if targetType == reflect.TypeFor[multipart.FileHeader]() {
+	if bodyType == reflect.TypeFor[multipart.FileHeader]() {
 		if err := r.ParseMultipartForm(info.getMaxMemory()); err != nil {
 			return reflect.Value{}, NewFileParseError("error parsing multipart form", err)
 		}
@@ -316,20 +340,20 @@ func (info *handlerInfo) getMultipartFormDataValueByType(bodyType reflect.Type, 
 		return reflect.Value{}, NewRequireError([]string{}, "file upload is missing")
 	}
 	// 2- none-require file upload
-	if targetType == reflect.TypeFor[*multipart.FileHeader]() {
+	if bodyType == reflect.TypeFor[*multipart.FileHeader]() {
 		if err := r.ParseMultipartForm(info.getMaxMemory()); err != nil {
 			return reflect.Value{}, NewFileParseError("error parsing multipart form", err)
 		}
 		for _, v := range r.MultipartForm.File {
 			if len(v) > 0 {
-				return reflect.ValueOf(*v[0]), nil
+				return reflect.ValueOf(v[0]), nil
 			}
 
 		}
 		return ret, nil
 	}
 	// 3- multifile upload
-	if targetType == reflect.TypeFor[[]multipart.FileHeader]() {
+	if bodyType == reflect.TypeFor[[]multipart.FileHeader]() {
 		if err := r.ParseMultipartForm(info.getMaxMemory()); err != nil {
 			return reflect.Value{}, NewFileParseError("error parsing multipart form", err)
 		}
@@ -345,7 +369,7 @@ func (info *handlerInfo) getMultipartFormDataValueByType(bodyType reflect.Type, 
 		return ret, nil
 	}
 	// 4- multifile upload with nullable of element
-	if targetType == reflect.TypeFor[[]*multipart.FileHeader]() {
+	if bodyType == reflect.TypeFor[[]*multipart.FileHeader]() {
 		if err := r.ParseMultipartForm(info.getMaxMemory()); err != nil {
 			return reflect.Value{}, NewFileParseError("error parsing multipart form", err)
 		}
@@ -357,7 +381,7 @@ func (info *handlerInfo) getMultipartFormDataValueByType(bodyType reflect.Type, 
 		return ret, nil
 	}
 	// 5- multifile upload with nullable of element and nullable of array
-	if targetType == reflect.TypeFor[*[]*multipart.FileHeader]() {
+	if bodyType == reflect.TypeFor[*[]*multipart.FileHeader]() {
 		if err := r.ParseMultipartForm(info.getMaxMemory()); err != nil {
 			return reflect.Value{}, NewFileParseError("error parsing multipart form", err)
 		}
