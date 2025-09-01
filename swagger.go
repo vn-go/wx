@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 
 	_ "embed"
 
@@ -53,6 +54,9 @@ Example: CreateSwagger("docs") -> http://.../docs/index.html
 Note: After calling this function, in order to Swagger doc show in browser , please call swaggerBuild.Build()
 */
 func CreateSwagger(server *htttpServer, BaseUri string) swaggerBuild {
+	BaseUri = strings.TrimPrefix(BaseUri, "/")
+	BaseUri = strings.TrimSuffix(BaseUri, "/")
+	BaseUri = "/" + BaseUri
 	sw, err := swaggers3.CreateSwagger(server.BaseUrl, swaggers3.Info{})
 	if err != nil {
 		return swaggerBuild{
