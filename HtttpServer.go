@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
-	"time"
 )
 
 var useSwagger bool = false
 
 type HtttpServer struct {
-
+	http.Server
+	mux *http.ServeMux
 	// Port is the port the server will listen on.
 	Port string
 	// BaseUrl is the base URL of the server.
@@ -20,8 +20,6 @@ type HtttpServer struct {
 	// Handler is the HTTP handler for the server.
 	handler http.Handler
 	// server is the underlying http.Server.
-	server *http.Server
-	mux    *http.ServeMux
 
 	mws []func(w http.ResponseWriter, r *http.Request, next http.HandlerFunc)
 }
@@ -65,6 +63,7 @@ func (s *HtttpServer) Start() error {
 	}
 	// handler cuối cùng gọi mux
 	final := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
 		s.mux.ServeHTTP(w, r)
 	})
 
@@ -82,16 +81,18 @@ func (s *HtttpServer) Start() error {
 	addr := fmt.Sprintf("%s:%s", s.Bind, s.Port)
 	// fmt.Println("Server listening at", addr)
 	// return http.ListenAndServe(addr, s.handler)
-	s.server = &http.Server{
-		Addr:         addr,
-		Handler:      s.handler,
-		ReadTimeout:  10 * time.Second, // Giới hạn đọc request
-		WriteTimeout: 10 * time.Second, // Giới hạn ghi response
-		IdleTimeout:  60 * time.Second, // Cho keep-alive
-	}
+	s.Addr = addr
+	s.Handler = s.handler
+	// s. = &http.Server{
+	// 	Addr:         addr,
+	// 	Handler:      s.handler,
+	// 	ReadTimeout:  10 * time.Second, // Giới hạn đọc request
+	// 	WriteTimeout: 10 * time.Second, // Giới hạn ghi response
+	// 	IdleTimeout:  60 * time.Second, // Cho keep-alive
+	// }
 
 	fmt.Println("Server listening at", addr)
-	return s.server.ListenAndServe()
+	return s.ListenAndServe()
 }
 func (s *HtttpServer) Middleware(fn func(w http.ResponseWriter, r *http.Request, next http.HandlerFunc)) *HtttpServer {
 	s.mws = append(s.mws, fn)

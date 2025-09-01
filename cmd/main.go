@@ -18,5 +18,6 @@ func main() {
 
 	swagger.Build()
 	server.Middleware(wx.MiddlWares.Cors)
+	server.Middleware(wx.MiddlWares.Zip)
 	server.Start()
 }
