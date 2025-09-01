@@ -11,7 +11,7 @@ import (
 type TestController struct {
 }
 
-func (tst *TestController) Hello(ctx *HttpContext) {
+func (tst *TestController) Hello(ctx *Handler) {
 
 }
 func TestGetHandlerInfo_TestController_Hello(t *testing.T) {
@@ -22,6 +22,7 @@ func TestGetHandlerInfo_TestController_Hello(t *testing.T) {
 	assert.NotEmpty(t, info)
 	utils.ExtractUriInfo(info)
 	utils.ExtractBodyInfo(info)
+	assert.Equal(t, []int{}, info.indexFieldIshandler)
 	assert.Equal(t, []string{}, info.routeTags)
 	assert.Equal(t, "test-controller/hello", info.uriHandler)
 	assert.Equal(t, "POST", info.httpMethod)
@@ -33,7 +34,7 @@ func TestGetHandlerInfo_TestController_Hello(t *testing.T) {
 
 }
 func (tst *TestController) Hello2(ctx *struct {
-	HttpContext `route:"method:get"`
+	Handler `route:"method:get"`
 }) {
 
 }
@@ -41,6 +42,8 @@ func TestGetHandlerInfo_TestController_Hello2(t *testing.T) {
 	mt, ok := utils.GetMethodByName(reflect.TypeOf(TestController{}), "Hello2")
 	assert.True(t, ok)
 	info, err := utils.GetHandlerInfo(mt)
+	assert.Equal(t, 1, info.indexOfArgIsHandler)
+	assert.Equal(t, []int{0}, info.indexFieldIshandler)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, info)
 	utils.ExtractUriInfo(info)
@@ -56,7 +59,7 @@ func TestGetHandlerInfo_TestController_Hello2(t *testing.T) {
 
 }
 func (tst *TestController) Hello3(ctx *struct {
-	HttpContext `route:"@/files;method:get"`
+	Handler `route:"@/files;method:get"`
 }) {
 
 }
@@ -66,6 +69,8 @@ func TestGetHandlerInfo_TestController_Hello3(t *testing.T) {
 	info, err := utils.GetHandlerInfo(mt)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, info)
+	assert.Equal(t, 1, info.indexOfArgIsHandler)
+	assert.Equal(t, []int{0}, info.indexFieldIshandler)
 	utils.ExtractUriInfo(info)
 	utils.ExtractBodyInfo(info)
 	assert.Equal(t, []string{"@/files;method:get"}, info.routeTags)
@@ -79,8 +84,8 @@ func TestGetHandlerInfo_TestController_Hello3(t *testing.T) {
 
 }
 func (tst *TestController) Hello4(ctx *struct {
-	HttpContext `route:"@/files/{Path};method:get"`
-	Path        string
+	Handler `route:"@/files/{Path};method:get"`
+	Path    string
 }) {
 
 }
@@ -90,6 +95,8 @@ func TestGetHandlerInfo_TestController_Hello4(t *testing.T) {
 	info, err := utils.GetHandlerInfo(mt)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, info)
+	assert.Equal(t, 1, info.indexOfArgIsHandler)
+	assert.Equal(t, []int{0}, info.indexFieldIshandler)
 	utils.ExtractUriInfo(info)
 	utils.ExtractBodyInfo(info)
 	assert.Equal(t, []string{"@/files/{Path};method:get"}, info.routeTags)
@@ -103,8 +110,8 @@ func TestGetHandlerInfo_TestController_Hello4(t *testing.T) {
 
 }
 func (tst *TestController) Hello5(ctx *struct {
-	HttpContext `route:"@/files/{*Path};method:get"`
-	Path        string
+	Handler `route:"@/files/{*Path};method:get"`
+	Path    string
 }) {
 
 }
@@ -114,6 +121,8 @@ func TestGetHandlerInfo_TestController_Hello5(t *testing.T) {
 	info, err := utils.GetHandlerInfo(mt)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, info)
+	assert.Equal(t, 1, info.indexOfArgIsHandler)
+	assert.Equal(t, []int{0}, info.indexFieldIshandler)
 	utils.ExtractUriInfo(info)
 	utils.ExtractBodyInfo(info)
 	assert.Equal(t, []string{"@/files/{*Path};method:get"}, info.routeTags)
@@ -132,7 +141,7 @@ type JsonBody struct {
 	Age  int    `json:"age"`
 }
 
-func (tst *TestController) JsonBody(ctx *HttpContext, body JsonBody) {
+func (tst *TestController) JsonBody(ctx *Handler, body JsonBody) {
 
 }
 func TestGetHandlerInfo_TestController_JsonBody(t *testing.T) {
@@ -141,6 +150,8 @@ func TestGetHandlerInfo_TestController_JsonBody(t *testing.T) {
 	info, err := utils.GetHandlerInfo(mt)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, info)
+	assert.Equal(t, 1, info.indexOfArgIsHandler)
+	assert.Equal(t, []int{}, info.indexFieldIshandler)
 	utils.ExtractUriInfo(info)
 	utils.ExtractBodyInfo(info)
 	assert.Equal(t, []string{}, info.routeTags)
@@ -155,7 +166,7 @@ func TestGetHandlerInfo_TestController_JsonBody(t *testing.T) {
 
 }
 func (tst *TestController) JsonBody2(ctx *struct {
-	HttpContext `route:"method:post"`
+	Handler `route:"method:post"`
 }, body JsonBody) {
 
 }
@@ -165,6 +176,8 @@ func TestGetHandlerInfo_TestController_JsonBody2(t *testing.T) {
 	info, err := utils.GetHandlerInfo(mt)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, info)
+	assert.Equal(t, 1, info.indexOfArgIsHandler)
+	assert.Equal(t, []int{0}, info.indexFieldIshandler)
 	utils.ExtractUriInfo(info)
 	utils.ExtractBodyInfo(info)
 	assert.Equal(t, []string{"method:post"}, info.routeTags)
@@ -180,8 +193,8 @@ func TestGetHandlerInfo_TestController_JsonBody2(t *testing.T) {
 
 }
 func (tst *TestController) JsonBody3(ctx *struct {
-	HttpContext `route:"@/{Tenant};method:post"`
-	Tenant      string
+	Handler `route:"@/{Tenant};method:post"`
+	Tenant  string
 }, body JsonBody) {
 
 }
@@ -191,6 +204,8 @@ func TestGetHandlerInfo_TestController_JsonBody3(t *testing.T) {
 	info, err := utils.GetHandlerInfo(mt)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, info)
+	assert.Equal(t, 1, info.indexOfArgIsHandler)
+	assert.Equal(t, []int{0}, info.indexFieldIshandler)
 	utils.ExtractUriInfo(info)
 	utils.ExtractBodyInfo(info)
 	assert.Equal(t, []string{"@/{Tenant};method:post"}, info.routeTags)
@@ -212,7 +227,7 @@ type FileUploadBody struct {
 	Files multipart.FileHeader
 }
 
-func (tst *TestController) FileBody(ctx *HttpContext, body FileUploadBody) {
+func (tst *TestController) FileBody(ctx *Handler, body FileUploadBody) {
 
 }
 func TestGetHandlerInfo_TestController_FileBody(t *testing.T) {
@@ -221,6 +236,8 @@ func TestGetHandlerInfo_TestController_FileBody(t *testing.T) {
 	info, err := utils.GetHandlerInfo(mt)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, info)
+	assert.Equal(t, 1, info.indexOfArgIsHandler)
+	assert.Equal(t, []int{}, info.indexFieldIshandler)
 	utils.ExtractUriInfo(info)
 	utils.ExtractBodyInfo(info)
 	assert.Equal(t, []string{}, info.routeTags)
@@ -238,11 +255,11 @@ func TestGetHandlerInfo_TestController_FileBody(t *testing.T) {
 
 }
 func (tst *TestController) FileBodyUriParams(ctx *struct {
-	HttpContext `route:"@/{Tenant}/files/{*Path}?name={Name}&age={Age};method:post"`
-	Tenant      string
-	Path        string
-	Name        string
-	Age         int
+	Handler `route:"@/{Tenant}/files/{*Path}?name={Name}&age={Age};method:post"`
+	Tenant  string
+	Path    string
+	Name    string
+	Age     int
 }, body FileUploadBody) {
 
 }
@@ -252,6 +269,8 @@ func TestGetHandlerInfo_TestController_FileBodyUriParams(t *testing.T) {
 	info, err := utils.GetHandlerInfo(mt)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, info)
+	assert.Equal(t, 1, info.indexOfArgIsHandler)
+	assert.Equal(t, []int{0}, info.indexFieldIshandler)
 	utils.ExtractUriInfo(info)
 	utils.ExtractBodyInfo(info)
 	assert.Equal(t, []string{"@/{Tenant}/files/{*Path}?name={Name}&age={Age};method:post"}, info.routeTags)
@@ -278,11 +297,11 @@ func TestGetHandlerInfo_TestController_FileBodyUriParams(t *testing.T) {
 
 }
 func (tst *TestController) FileBodySimple(ctx *struct {
-	HttpContext `route:"@/{Tenant}/files/{*Path}?name={Name}&age={Age};method:post"`
-	Tenant      string
-	Path        string
-	Name        string
-	Age         int
+	Handler `route:"@/{Tenant}/files/{*Path}?name={Name}&age={Age};method:post"`
+	Tenant  string
+	Path    string
+	Name    string
+	Age     int
 }, file multipart.FileHeader) {
 
 }
@@ -292,6 +311,8 @@ func TestGetHandlerInfo_TestController_FileBodySimple(t *testing.T) {
 	info, err := utils.GetHandlerInfo(mt)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, info)
+	assert.Equal(t, 1, info.indexOfArgIsHandler)
+	assert.Equal(t, []int{0}, info.indexFieldIshandler)
 	utils.ExtractUriInfo(info)
 	utils.ExtractBodyInfo(info)
 	assert.Equal(t, []string{"@/{Tenant}/files/{*Path}?name={Name}&age={Age};method:post"}, info.routeTags)

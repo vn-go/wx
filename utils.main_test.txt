@@ -1,0 +1,31 @@
+Running tool: C:\Golang\bin\go.exe test -benchmem -run=^$ -bench ^BenchmarkFormPost3$ github.com/vn-go/wx
+
+goos: windows
+goarch: amd64
+pkg: github.com/vn-go/wx
+cpu: 12th Gen Intel(R) Core(TM) i7-12650H
+BenchmarkFormPost3-16    	  596355	      1801 ns/op	    1124 B/op	      24 allocs/op
+PASS
+ok  	github.com/vn-go/wx	1.161s
+
+//---------------------
+Running tool: C:\Golang\bin\go.exe test -benchmem -run=^$ -bench ^BenchmarkFormPost3$ github.com/vn-go/wx
+
+goos: windows
+goarch: amd64
+pkg: github.com/vn-go/wx
+cpu: 12th Gen Intel(R) Core(TM) i7-12650H
+BenchmarkFormPost3-16    	  644931	      1717 ns/op	    1108 B/op	      24 allocs/op
+PASS
+ok  	github.com/vn-go/wx	1.201s
+
+//---
+Running tool: C:\Golang\bin\go.exe test -benchmem -run=^$ -bench ^BenchmarkFormPost3$ github.com/vn-go/wx
+
+goos: windows
+goarch: amd64
+pkg: github.com/vn-go/wx
+cpu: 12th Gen Intel(R) Core(TM) i7-12650H
+BenchmarkFormPost3-16    	  666802	      1701 ns/op	    1104 B/op	      24 allocs/op
+PASS
+ok  	github.com/vn-go/wx	1.223s

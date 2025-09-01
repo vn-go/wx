@@ -26,13 +26,13 @@ type utilsType struct {
 	HttpContextPtrType   reflect.Type
 	ReqFieldName         string
 	ResFieldName         string
-	IndexOfReqField      []int
-	IndexOfResField      []int
-	Routes               *routeTypes
-	Tags                 *tagsHelperType
-	Uri                  *uriHelperType
-	controllers          *controllerHelperType
-	formDetect           *formDetectType
+	// IndexOfReqField      []int
+	// IndexOfResField      []int
+	Routes      *routeTypes
+	Tags        *tagsHelperType
+	Uri         *uriHelperType
+	controllers *controllerHelperType
+	formDetect  *formDetectType
 }
 
 func (u *utilsType) GetMethodByName(typ reflect.Type, name string) (reflect.Method, bool) {
@@ -63,8 +63,8 @@ func (u *utilsType) GetMethodByName(typ reflect.Type, name string) (reflect.Meth
 }
 
 var utils = &utilsType{
-	HttpContextType:      reflect.TypeOf(HttpContext{}),
-	HttpContextPtrType:   reflect.TypeOf(&HttpContext{}),
+	HttpContextType:      reflect.TypeOf((Handler)(nil)),
+	HttpContextPtrType:   reflect.TypeOf((*Handler)(nil)),
 	ReqFieldName:         "Req",
 	ResFieldName:         "Res",
 	cacheGetMethodByName: sync.Map{},
@@ -76,7 +76,10 @@ var utils = &utilsType{
 	Uri: &uriHelperType{
 		SpecialCharForRegex: "/\\?.$%^*-+",
 	},
-	controllers: &controllerHelperType{},
+	controllers: &controllerHelperType{
+		httpContextTypePtr: reflect.TypeOf((*Handler)(nil)),
+		httpContextType:    reflect.TypeOf((Handler)(nil)),
+	},
 	formDetect: &formDetectType{
 		fileHeaderType:        reflect.TypeOf(multipart.FileHeader{}),
 		fileHeaderTypePtr:     reflect.TypeOf(&multipart.FileHeader{}),
@@ -88,12 +91,12 @@ var utils = &utilsType{
 }
 
 func init() {
-	if field, ok := utils.HttpContextType.FieldByName(utils.ReqFieldName); ok {
-		utils.IndexOfReqField = field.Index
-	}
-	if field, ok := utils.HttpContextType.FieldByName(utils.ResFieldName); ok {
-		utils.IndexOfResField = field.Index
-	}
+	// if field, ok := utils.HttpContextType.FieldByName(utils.ReqFieldName); ok {
+	// 	utils.IndexOfReqField = field.Index
+	// }
+	// if field, ok := utils.HttpContextType.FieldByName(utils.ResFieldName); ok {
+	// 	utils.IndexOfResField = field.Index
+	// }
 
 	mock.MockFindMethodByType = utils.GetMethodByName
 

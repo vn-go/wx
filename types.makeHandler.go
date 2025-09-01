@@ -126,50 +126,49 @@ func (h *handlerInfo) GetUriHandler() string {
 func (h *handlerInfo) GetHttpMethod() string {
 	return h.httpMethod
 }
+func (info *handlerInfo) generateHttpContext(w http.ResponseWriter, r *http.Request) Handler {
+
+	ret := func() *HttpContext1 {
+		return &HttpContext1{
+			Req: r,
+			Res: w,
+		}
+	}
+	return ret
+}
 func (info *handlerInfo) Invoke(w http.ResponseWriter, r *http.Request) ([]reflect.Value, error) {
 	contentType := r.Header.Get("Content-Type")
-	controller, err := info.CreateController()
+	valueOfArgsIsHandler, valueOfHandlerFunction := info.CreateHandlerValue(r, w)
+	controller, err := info.CreateController(valueOfHandlerFunction)
 	if err != nil {
 		// http.Error(w, err.Error(), http.StatusInternalServerError)
 		return nil, err
 	}
-	valueOfReq := reflect.ValueOf(r)
-	valueOfRes := reflect.ValueOf(w)
-	httpContextValue, err := info.CreateHttpContext(valueOfReq, valueOfRes)
+	// valueOfReq := reflect.ValueOf(r)
+	// valueOfRes := reflect.ValueOf(w)
+
 	if err != nil {
 		// http.Error(w, err.Error(), http.StatusInternalServerError)
 		return nil, err
 	}
-	err = info.applyUri(*httpContextValue, r)
+	err = info.applyUri(valueOfArgsIsHandler, r)
 	if err != nil {
 		return nil, err
-	}
-	if info.conrollerNewMethod != nil {
-		retRun := info.conrollerNewMethod.Func.Call([]reflect.Value{*controller})
-		if retRun[0].Elem().Interface() != nil {
-			// http.Error(w, retRun[0].Elem().Interface().(error).Error(), http.StatusInternalServerError)
-			return nil, retRun[0].Elem().Interface().(error)
-
-		}
-
 	}
 	if info.hasHttpContextInController {
-		fiedlOfHttpContextInController := controller.Elem().FieldByIndex(info.fiedIndexOfHttpContextInController)
+		fiedlOfHttpContextInController := controller.Elem().FieldByIndex(info.indexFieldIsHandlerInController)
 		if fiedlOfHttpContextInController.Kind() == reflect.Ptr {
-			fiedlOfHttpContextInController.Set(reflect.ValueOf(&HttpContext{
-				Req: r,
-				Res: w,
-			}))
+			httpContext := info.generateHttpContext(w, r)
+			fiedlOfHttpContextInController.Set(reflect.ValueOf(&httpContext))
 		} else {
-			fiedlOfHttpContextInController.Set(reflect.ValueOf(HttpContext{
-				Req: r,
-				Res: w,
-			}))
+			httpContext := info.generateHttpContext(w, r)
+			fiedlOfHttpContextInController.Set(reflect.ValueOf(httpContext))
 		}
 	}
+
 	args := make([]reflect.Value, info.method.Type.NumIn())
 	args[0] = *controller
-	args[info.indexOfArgIsHttpContext] = *httpContextValue
+	args[info.indexOfArgIsHandler] = valueOfArgsIsHandler
 	if info.indexOfArgIsRequestBody != -1 {
 		bodyValue, err := info.GetBodyValue(r, contentType)
 		if err != nil {
@@ -199,32 +198,84 @@ type initCreateControllerOnce struct {
 
 var cacheCreateControllerOnce sync.Map
 
-func (info *handlerInfo) CreateControllerOnce() (*reflect.Value, error) {
-	actally, _ := cacheCreateControllerOnce.LoadOrStore(info.controllerTypeElem, &initCreateControllerOnce{})
-	item := actally.(*initCreateControllerOnce)
-	item.once.Do(func() {
-		item.controller, item.err = info.CreateController()
-	})
-	return item.controller, item.err
+// func (info *handlerInfo) CreateControllerOnce() (*reflect.Value, error) {
+// 	actally, _ := cacheCreateControllerOnce.LoadOrStore(info.controllerTypeElem, &initCreateControllerOnce{})
+// 	item := actally.(*initCreateControllerOnce)
+// 	item.once.Do(func() {
+// 		item.controller, item.err = info.CreateController()
+// 	})
+// 	return item.controller, item.err
 
-}
-func (info *handlerInfo) CreateController() (*reflect.Value, error) {
+// }
+func (info *handlerInfo) CreateController(valueOfHandlerFunction reflect.Value) (*reflect.Value, error) {
 	controllerValue := reflect.New(info.controllerType.Elem())
 	if info.conrollerNewMethod != nil {
+		controllerValue.Elem().FieldByIndex(info.indexFieldIsHandlerInController).Set(valueOfHandlerFunction)
 		ret := info.conrollerNewMethod.Func.Call([]reflect.Value{controllerValue})
-		if ret[0].Elem().Interface() != nil {
-			return nil, ret[0].Elem().Interface().(error)
+		if !ret[0].IsZero() {
+			if ret[0].Elem().Interface() != nil {
+				return nil, ret[0].Elem().Interface().(error)
+			}
 		}
 		return &controllerValue, nil
 	}
 	return &controllerValue, nil
 
 }
-func (info *handlerInfo) CreateHttpContext(reqValue, resValue reflect.Value) (*reflect.Value, error) {
-	httpContextValue := reflect.New(info.typeOfArgIsHttpContextElem)
-	httpContextValue.Elem().FieldByIndex(info.reqFieldIndex).Set(reqValue)
-	httpContextValue.Elem().FieldByIndex(info.resFieldIndex).Set(resValue)
-	return &httpContextValue, nil
+func (info *handlerInfo) CreateHandlerValue(r *http.Request, w http.ResponseWriter) (reflect.Value, reflect.Value) {
+	if utils.controllers.isHandler(info.typeOfArgIsIsHandlerElem) {
+		if info.typeOfArgIsIsHandler.Kind() == reflect.Ptr {
+			// type Hnx func ()
+			// var h Hnx = func() {
+			// 	fmt.Println("Hello Hnx")
+			// }
+
+			// var fx *Hnx = &h // fx là *Hnx
+
+			var retVale Handler = func() *HttpContext1 {
+				return &HttpContext1{
+					Req: r,
+					Res: w,
+				}
+			}
+			var retValePtr *Handler = &retVale
+
+			retVal := reflect.ValueOf(retValePtr)
+			return retVal, retVal.Elem()
+		} else {
+			ret := func() *HttpContext1 {
+				return &HttpContext1{
+					Req: r,
+					Res: w,
+				}
+			}
+			retVal := reflect.ValueOf(ret)
+			return retVal, retVal
+		}
+
+	}
+	retValOfHandler := reflect.New(info.typeOfArgIsIsHandlerElem)
+
+	ret := func() *HttpContext1 {
+		return &HttpContext1{
+			Req: r,
+			Res: w,
+		}
+	}
+	retValOfHandlerFn := reflect.ValueOf(ret)
+	retValOfHandler.Elem().FieldByIndex(info.indexFieldIshandler).Set(retValOfHandlerFn)
+	return retValOfHandler, retValOfHandlerFn
+	// httpContextValue := reflect.New(info.typeOfArgIsHttpContextElem)
+	// httpContextValue.Elem().FieldByIndex(info.reqFieldIndex).Set(reqValue)
+	// httpContextValue.Elem().FieldByIndex(info.resFieldIndex).Set(resValue)
+	// return &httpContextValue, nil
+}
+func (info *handlerInfo) CreateHttpContextDelete(reqValue, resValue reflect.Value) (*reflect.Value, error) {
+	// httpContextValue := reflect.New(info.typeOfArgIsHttpContextElem)
+	// httpContextValue.Elem().FieldByIndex(info.reqFieldIndex).Set(reqValue)
+	// httpContextValue.Elem().FieldByIndex(info.resFieldIndex).Set(resValue)
+	// return &httpContextValue, nil
+	panic("depreciate")
 }
 func (info *handlerInfo) GetBodyValue(r *http.Request, contentType string) (reflect.Value, error) {
 	//"multipart/form-data; boundary=bc93ed97d895d9ff5f8eb8f994205bc3f8184e4f5d0668de8791448fe447"
@@ -311,7 +362,7 @@ func (info *handlerInfo) GetMultipartFormDataValue(r *http.Request) (reflect.Val
 		}
 
 	} else {
-		fmt.Println(info.typeOfRequestBody.String())
+
 		return info.getMultipartFormDataValueByType(info.typeOfRequestBody, r)
 	}
 }
@@ -506,7 +557,7 @@ func (info *handlerInfo) applyUri(contextValue reflect.Value, r *http.Request) e
 			// }
 
 			query := r.URL.Query()
-			fmt.Println(info.queryParams)
+
 			typeOfContextValue := contextValue.Type().Elem()
 			for k, x := range query {
 				field, ok := info.GetParamFieldOfHandlerContext(typeOfContextValue, k)

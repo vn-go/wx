@@ -9,11 +9,12 @@ import (
 )
 
 type Example struct {
-	Ctx *HttpContext
+	Ctx *Handler
 }
 
-func (ex *Example) PostNoBodyMethod(ctx *HttpContext) {
-	ex.Ctx.Res.Write([]byte("ok"))
+func (ex *Example) PostNoBodyMethod(ctx *Handler) {
+
+	fmt.Println(ex.Ctx)
 
 }
 func TestPostNoBodyMethod(t *testing.T) {
@@ -51,7 +52,7 @@ func BenchmarkPostNoBodyMethod(t *testing.B) {
 
 }
 func (ex *Example) GetMethod(ctx *struct {
-	HttpContext `route:"method:get"`
+	Handler `route:"method:get"`
 }) {
 	//ex.Res.Write([]byte("ok"))
 
@@ -90,12 +91,12 @@ func BenchmarkGetMethod(t *testing.B) {
 	//handler.ConrollerNewMethod
 
 }
-func (ex *Example) PostBodyMethod(ctx *HttpContext, data *struct {
+func (ex *Example) PostBodyMethod(ctx Handler, data *struct {
 	Name string `json:"name"`
 	Age  int    `json:"age"`
 }) {
-	ex.Ctx.Res.Write([]byte("ok"))
-
+	(*ex.Ctx)().Res.Write([]byte("OK"))
+	//ex.Ctx().Res.Write([]byte("OK"))
 }
 func TestPostBodyMethod(t *testing.T) {
 	handler, err := MakeHandlerFromMethod[Example]("PostBodyMethod")
@@ -144,9 +145,9 @@ func BenchmarkPostBodyMethod(t *testing.B) {
 
 var count = 0
 
-func (ex *Example) SimpleUpload(ctx *HttpContext, file *multipart.FileHeader) {
+func (ex *Example) SimpleUpload(ctx Handler, file *multipart.FileHeader) {
 	//count++
-	fmt.Println(file)
+	//fmt.Println(file)
 }
 func TestSimpleUpload(t *testing.T) {
 	handler, err := MakeHandlerFromMethod[Example]("SimpleUpload")
@@ -178,7 +179,7 @@ func BenchmarkSimpleUpload(t *testing.B) {
 	}
 	fmt.Println(count)
 }
-func (ex *Example) SimpleUploadFiles(ctx *HttpContext, file []multipart.FileHeader) {
+func (ex *Example) SimpleUploadFiles(ctx Handler, file []multipart.FileHeader) {
 	//fmt.Println(file)
 }
 func TestSimpleUploadFiles(t *testing.T) {
@@ -226,11 +227,12 @@ type User struct {
 	Name string `json:"name"`
 }
 
-func (ex *Example) SimpleUploadFiles2(ctx *HttpContext, data struct {
+func (ex *Example) SimpleUploadFiles2(handler Handler, data struct {
 	Files []multipart.FileHeader
 	User  User
 }) {
-
+	ctx := handler()
+	ctx.Res.Write([]byte{})
 }
 func TestSimpleUploadFiles2(t *testing.T) {
 	handler, err := MakeHandlerFromMethod[Example]("SimpleUploadFiles2")
@@ -289,7 +291,7 @@ func BenchmarkSimpleUploadFiles2(t *testing.B) {
 	}
 
 }
-func (ex *Example) FormPost(ctx *HttpContext, data *Form[User]) (*User, error) {
+func (ex *Example) FormPost(ctx Handler, data *Form[User]) (*User, error) {
 	ret := data.Data
 	return &ret, nil
 }
@@ -331,8 +333,8 @@ func BenchmarkFormPost(t *testing.B) {
 
 }
 func (ex *Example) FormPost2(ctx *struct {
-	HttpContext `route:"@/files/{FileName}"`
-	FileName    string
+	Handler  `route:"@/files/{FileName}"`
+	FileName string
 }, data *Form[User]) (*User, error) {
 	ret := data.Data
 	return &ret, nil
@@ -354,8 +356,8 @@ func TestFormPost2(t *testing.T) {
 	assert.Equal(t, 200, res.Code)
 }
 func (ex *Example) FormPost3(ctx *struct {
-	HttpContext `route:"@/files/{*filePath}"`
-	FilePath    string
+	Handler  `route:"@/files/{*filePath}"`
+	FilePath string
 }, data *Form[User]) (*User, error) {
 	ret := data.Data
 	return &ret, nil
@@ -396,9 +398,9 @@ func BenchmarkFormPost3(t *testing.B) {
 	//assert.Equal(t, 200, res.Code)
 }
 func (ex *Example) FormPost4(ctx *struct {
-	HttpContext `route:"@/files/{*filePath}?dirPath={dirPath}"`
-	FilePath    string
-	DirPath     string
+	Handler  `route:"@/files/{*filePath}?dirPath={dirPath}"`
+	FilePath string
+	DirPath  string
 }, data *Form[User]) (*User, error) {
 	ret := data.Data
 	return &ret, nil
@@ -420,9 +422,9 @@ func TestFormPost4(t *testing.T) {
 	assert.Equal(t, 200, res.Code)
 }
 func (ex *Example) FormPost5(ctx *struct {
-	HttpContext `route:"@/files/{*filePath}?dirPath={dirPath}"`
-	FilePath    string
-	DirPath     string
+	Handler  `route:"@/files/{*filePath}?dirPath={dirPath}"`
+	FilePath string
+	DirPath  string
 }, data *Form[*multipart.FileHeader]) (*User, error) {
 
 	return nil, nil
@@ -442,4 +444,27 @@ func TestFormPost5(t *testing.T) {
 	res := Mock.NewRes()
 	fnHandler.ServeHTTP(res, req)
 	assert.Equal(t, 200, res.Code)
+}
+
+type Example2 struct {
+	Handler
+}
+
+func (ex *Example2) New() error {
+	//ex.Handler().Res.Write([]byte{})
+	return nil
+}
+func (ex *Example2) Post(h *Handler) {
+
+}
+func TestExample2Post(t *testing.T) {
+	handler, err := MakeHandlerFromMethod[Example2]("Post")
+	assert.NoError(t, err)
+	assert.NotNil(t, handler)
+	fnHandler := handler.Handler()
+	assert.NotNil(t, fnHandler)
+	req, err := Mock.JsonRequest("POST", handler.GetUriHandler(), nil)
+	assert.NoError(t, err)
+	res := Mock.NewRes()
+	fnHandler.ServeHTTP(res, req)
 }

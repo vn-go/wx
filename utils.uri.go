@@ -131,7 +131,7 @@ func (h *uriHelperType) calculateUrlWithQuery(ret *handlerInfo) {
 		fieldName := strings.Split(x, "=")[1]
 		fieldName = strings.TrimPrefix(fieldName, "{")
 		fieldName = strings.TrimSuffix(fieldName, "}")
-		field, ok := ret.typeOfArgIsHttpContextElem.FieldByNameFunc(func(s string) bool {
+		field, ok := ret.typeOfArgIsIsHandlerElem.FieldByNameFunc(func(s string) bool {
 			return strings.EqualFold(s, fieldName)
 		})
 		if !ok {

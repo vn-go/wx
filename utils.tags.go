@@ -8,28 +8,38 @@ import (
 type tagsHelperType struct {
 }
 
-func (h *tagsHelperType) ExtractTags(typ reflect.Type) ([]string, bool) {
+func (h *tagsHelperType) ExtractTags(typ reflect.Type, visited map[reflect.Type]bool) ([]string, bool) {
+	ret := []string{}
+	if typ == utils.HttpContextType || typ == utils.HttpContextPtrType {
+		return ret, true
+	}
 	var found bool
 	if typ.Kind() == reflect.Ptr {
 		typ = typ.Elem()
 	}
+	if _, ok := visited[typ]; ok {
+		return ret, false
+	}
+	visited[typ] = true
 	if typ.Kind() != reflect.Struct {
 		return []string{}, false
 	}
-	ret := []string{}
+
 	for i := 0; i < typ.NumField(); i++ {
 		field := typ.Field(i)
-
 		fieldType := field.Type
-		if typ.ConvertibleTo(utils.HttpContextType) || typ.ConvertibleTo(utils.HttpContextPtrType) {
-
+		if fieldType == utils.HttpContextType || fieldType == utils.HttpContextPtrType {
+			tags := field.Tag.Get("route")
+			if tags != "" {
+				ret = append(ret, tags)
+			}
 			return ret, true
 		}
 		if fieldType.Kind() == reflect.Ptr {
 			fieldType = fieldType.Elem()
 		}
 		if fieldType.Kind() == reflect.Struct {
-			subRet, found := h.ExtractTags(fieldType)
+			subRet, found := h.ExtractTags(fieldType, visited)
 			if found {
 				if field.Tag.Get("route") != "" {
 

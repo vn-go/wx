@@ -12,7 +12,7 @@ import (
 type ObjTest001 struct {
 }
 
-func (obj *ObjTest001) TestMethod001(ctx *wx.HttpContext) {
+func (obj *ObjTest001) TestMethod001(ctx *wx.Handler) {
 
 }
 func TestUtilsFindMethod(t *testing.T) {

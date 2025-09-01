@@ -11,6 +11,8 @@ import (
 )
 
 type controllerHelperType struct {
+	httpContextTypePtr reflect.Type
+	httpContextType    reflect.Type
 }
 type initFindIndexOfFieldHttpContext struct {
 	val   []int
@@ -20,6 +22,15 @@ type initFindIndexOfFieldHttpContext struct {
 
 var cacheFindIndexOfFieldHttpContext sync.Map
 
+func (h *controllerHelperType) isHandler(typ reflect.Type) bool {
+	// if field.Type == reflect.TypeOf(&HttpContext{}) || field.Type == reflect.TypeOf(HttpContext{}) {
+
+	// 	return true
+	// }
+	return typ == h.httpContextType || typ == h.httpContextTypePtr
+
+	//return false
+}
 func (h *controllerHelperType) findIndexOfFieldHttpContextInternal(receiverType reflect.Type, visited map[reflect.Type]bool) ([]int, bool) {
 
 	if receiverType.Kind() == reflect.Ptr {
@@ -33,7 +44,7 @@ func (h *controllerHelperType) findIndexOfFieldHttpContextInternal(receiverType 
 
 	for i := 0; i < receiverType.NumField(); i++ {
 		field := receiverType.Field(i)
-		if field.Type == reflect.TypeOf(&HttpContext{}) || field.Type == reflect.TypeOf(HttpContext{}) {
+		if h.isHandler(field.Type) {
 
 			return field.Index, true
 		}
@@ -58,7 +69,7 @@ func (h *controllerHelperType) FindIndexOfFieldHttpContext(receiverType reflect.
 	return item.val, item.found
 
 }
-func (h *controllerHelperType) FindReqResFieldIndex(receiverType reflect.Type) ([]int, []int) {
+func (h *controllerHelperType) FindReqResFieldIndexDelete(receiverType reflect.Type) ([]int, []int) {
 	fiedIndexOfHttpContext, found := h.FindIndexOfFieldHttpContext(receiverType)
 	if !found {
 		return nil, nil

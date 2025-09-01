@@ -4,7 +4,7 @@ import "reflect"
 
 func (u *utilsType) ExtractBodyInfo(ret *handlerInfo) {
 	for i := 1; i < ret.method.Type.NumIn(); i++ {
-		if i != ret.indexOfArgIsHttpContext {
+		if i != ret.indexOfArgIsHandler {
 			ret.indexOfArgIsRequestBody = i
 
 			ret.typeOfRequestBody = ret.method.Type.In(i)

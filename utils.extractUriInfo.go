@@ -8,14 +8,14 @@ import (
 func (u *utilsType) ExtractUriInfo(ret *handlerInfo) {
 	method := ret.method
 	ret.httpMethod = "POST" //<-- defualt is POST
-	if ret.indexOfArgIsHttpContext > 0 {
-		ret.typeOfArgIsHttpContext = method.Type.In(ret.indexOfArgIsHttpContext)
-		ret.typeOfArgIsHttpContextElem = ret.typeOfArgIsHttpContext
-		if ret.typeOfArgIsHttpContextElem.Kind() == reflect.Ptr {
-			ret.typeOfArgIsHttpContextElem = ret.typeOfArgIsHttpContext.Elem()
+	if ret.indexOfArgIsHandler > 0 {
+		ret.typeOfArgIsIsHandler = method.Type.In(ret.indexOfArgIsHandler)
+		ret.typeOfArgIsIsHandlerElem = ret.typeOfArgIsIsHandler
+		if ret.typeOfArgIsIsHandlerElem.Kind() == reflect.Ptr {
+			ret.typeOfArgIsIsHandlerElem = ret.typeOfArgIsIsHandler.Elem()
 		}
 
-		ret.routeTags, _ = u.Tags.ExtractTags(ret.typeOfArgIsHttpContextElem)
+		ret.routeTags, _ = u.Tags.ExtractTags(ret.typeOfArgIsIsHandlerElem, map[reflect.Type]bool{})
 		ret.uri = u.Tags.ExtractUriFromTags(ret.routeTags)
 		if HttpMethod := u.Tags.ExtractHttpMethodFromTags(ret.routeTags); HttpMethod != "" {
 			ret.httpMethod = HttpMethod
@@ -69,7 +69,7 @@ func (u *utilsType) ExtractUriInfo(ret *handlerInfo) {
 				if fieldName[0] == '*' {
 					fieldName = fieldName[1:]
 				}
-				field, ok := ret.typeOfArgIsHttpContextElem.FieldByNameFunc(func(s string) bool {
+				field, ok := ret.typeOfArgIsIsHandlerElem.FieldByNameFunc(func(s string) bool {
 					return strings.EqualFold(s, fieldName)
 				})
 				if !ok {
@@ -81,7 +81,7 @@ func (u *utilsType) ExtractUriInfo(ret *handlerInfo) {
 		if len(ret.queryParams) > 0 {
 			for i, x := range ret.queryParams {
 				fieldName := x.Name
-				field, ok := ret.typeOfArgIsHttpContextElem.FieldByNameFunc(func(s string) bool {
+				field, ok := ret.typeOfArgIsIsHandlerElem.FieldByNameFunc(func(s string) bool {
 					return strings.EqualFold(s, fieldName)
 				})
 				if !ok {

@@ -33,25 +33,27 @@ type handlerInfo struct {
 			so need a field to keep position of Hanlder arg
 
 	*/
-	indexOfArgIsHttpContext    int
-	typeOfArgIsHttpContext     reflect.Type
-	typeOfArgIsHttpContextElem reflect.Type
+	indexOfArgIsHandler      int
+	indexFieldIshandler      []int
+	typeOfArgIsIsHandler     reflect.Type
+	typeOfArgIsIsHandlerElem reflect.Type
 	/*
 		HttpContext is a struct that has two important fields, Req and Res, with corresponding types *http.Request and http.ResponseWriter.
 		This field represents the Fieldindex of Res
 	*/
-	resFieldIndex []int
-	/*
-		HttpContext is a struct that has two important fields, Req and Res, with corresponding types *http.Request and http.ResponseWriter.
-		This field represents the Fieldindex of Req
-	*/
-	reqFieldIndex                    []int
+	// resFieldIndex []int
+	// /*
+	// 	HttpContext is a struct that has two important fields, Req and Res, with corresponding types *http.Request and http.ResponseWriter.
+	// 	This field represents the Fieldindex of Req
+	// */
+	// reqFieldIndex                    []int
 	method                           reflect.Method
 	isNoOutPut                       bool
 	isAbsUri                         bool
 	uri                              string
 	isQueryUri                       bool
 	uriQuery                         string
+	indexFieldIsHandlerInController  []int
 	controllerTypeElem               reflect.Type
 	controllerType                   reflect.Type
 	conrollerNewMethod               *reflect.Method
@@ -69,12 +71,12 @@ type handlerInfo struct {
 	routeTags   []string
 	queryParams []queryParam
 
-	regexUriFind                       regexp.Regexp
-	regexUri                           string
-	uriHandler                         string
-	isRegexHandler                     bool
-	fieldIndexOfResController          []int
-	fieldIndexOfReqController          []int
-	fiedIndexOfHttpContextInController []int
-	hasHttpContextInController         bool
+	regexUriFind   regexp.Regexp
+	regexUri       string
+	uriHandler     string
+	isRegexHandler bool
+	// fieldIndexOfResController          []int
+	// fieldIndexOfReqController          []int
+
+	hasHttpContextInController bool
 }
