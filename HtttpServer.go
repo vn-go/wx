@@ -8,7 +8,7 @@ import (
 
 var useSwagger bool = false
 
-type HtttpServer struct {
+type htttpServer struct {
 	http.Server
 	mux *http.ServeMux
 	// Port is the port the server will listen on.
@@ -24,7 +24,10 @@ type HtttpServer struct {
 	mws []func(w http.ResponseWriter, r *http.Request, next http.HandlerFunc)
 }
 
-func NewHtttpServer(baseUrl string, port string, bind string) *HtttpServer {
+/*
+This function create a new htttpServer, after calling this function call htttpServer.Start
+*/
+func NewHtttpServer(baseUrl string, port string, bind string) *htttpServer {
 	if baseUrl[0] != '/' {
 		baseUrl = "/" + baseUrl
 	}
@@ -33,7 +36,7 @@ func NewHtttpServer(baseUrl string, port string, bind string) *HtttpServer {
 	}
 	baseUrl = strings.ReplaceAll(baseUrl, "//", "/")
 	mux := http.NewServeMux()
-	return &HtttpServer{
+	return &htttpServer{
 		Port:    port,
 		Bind:    bind,
 		BaseUrl: baseUrl,
@@ -43,7 +46,7 @@ func NewHtttpServer(baseUrl string, port string, bind string) *HtttpServer {
 	}
 
 }
-func (s *HtttpServer) loadController() error {
+func (s *htttpServer) loadController() error {
 	for _, x := range utils.Routes.UriList {
 		fmt.Println("Registering route:", x)
 		// s.mux.HandleFunc(x, func(w http.ResponseWriter, r *http.Request) {
@@ -56,7 +59,7 @@ func (s *HtttpServer) loadController() error {
 	return nil
 
 }
-func (s *HtttpServer) Start() error {
+func (s *htttpServer) Start() error {
 	err := s.loadController()
 	if err != nil {
 		return err
@@ -94,7 +97,7 @@ func (s *HtttpServer) Start() error {
 	fmt.Println("Server listening at", addr)
 	return s.ListenAndServe()
 }
-func (s *HtttpServer) Middleware(fn func(w http.ResponseWriter, r *http.Request, next http.HandlerFunc)) *HtttpServer {
+func (s *htttpServer) Middleware(fn func(w http.ResponseWriter, r *http.Request, next http.HandlerFunc)) *htttpServer {
 	s.mws = append(s.mws, fn)
 	return s
 }
