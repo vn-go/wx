@@ -2,6 +2,7 @@ package wx
 
 import (
 	"reflect"
+	"sync"
 
 	"github.com/vn-go/wx/mock"
 )
@@ -49,7 +50,29 @@ func (u *utilsType) findIndexOfFieldIsHandler(typ reflect.Type, visisted map[ref
 	return nil, false
 
 }
+
+type initGetHandlerInfo struct {
+	val  *handlerInfo
+	err  error
+	once sync.Once
+}
+
+var cacheGetHandlerInfo sync.Map
+
 func (u *utilsType) GetHandlerInfo(method reflect.Method) (*handlerInfo, error) {
+	typ := method.Type.In(0)
+	if typ.Kind() == reflect.Ptr {
+		typ = typ.Elem()
+	}
+	key := typ.String() + "://" + method.Name
+	actully, _ := cacheGetHandlerInfo.LoadOrStore(key, &initGetHandlerInfo{})
+	item := actully.(*initGetHandlerInfo)
+	item.once.Do(func() {
+		item.val, item.err = u.getHandlerInfo(method)
+	})
+	return item.val, item.err
+}
+func (u *utilsType) getHandlerInfo(method reflect.Method) (*handlerInfo, error) {
 	for i := 1; i < method.Type.NumIn(); i++ {
 		argType := method.Type.In(i)
 		if argType.Kind() == reflect.Ptr {
