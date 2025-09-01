@@ -12,11 +12,11 @@ import (
 /*
 Any published method of a struct that has exactly one argument which is a Handler or an embedded HttpContext is called a HttpContext method.
 */
-type HttpContext1 struct {
+type HttpContext struct {
 	Req *http.Request
 	Res http.ResponseWriter
 }
-type Handler func() *HttpContext1
+type Handler func() *HttpContext
 type Form[T any] struct {
 	Data T
 }

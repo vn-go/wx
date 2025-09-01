@@ -128,8 +128,8 @@ func (h *handlerInfo) GetHttpMethod() string {
 }
 func (info *handlerInfo) generateHttpContext(w http.ResponseWriter, r *http.Request) Handler {
 
-	ret := func() *HttpContext1 {
-		return &HttpContext1{
+	ret := func() *HttpContext {
+		return &HttpContext{
 			Req: r,
 			Res: w,
 		}
@@ -232,8 +232,8 @@ func (info *handlerInfo) CreateHandlerValue(r *http.Request, w http.ResponseWrit
 
 			// var fx *Hnx = &h // fx là *Hnx
 
-			var retVale Handler = func() *HttpContext1 {
-				return &HttpContext1{
+			var retVale Handler = func() *HttpContext {
+				return &HttpContext{
 					Req: r,
 					Res: w,
 				}
@@ -243,8 +243,8 @@ func (info *handlerInfo) CreateHandlerValue(r *http.Request, w http.ResponseWrit
 			retVal := reflect.ValueOf(retValePtr)
 			return retVal, retVal.Elem()
 		} else {
-			ret := func() *HttpContext1 {
-				return &HttpContext1{
+			ret := func() *HttpContext {
+				return &HttpContext{
 					Req: r,
 					Res: w,
 				}
@@ -256,8 +256,8 @@ func (info *handlerInfo) CreateHandlerValue(r *http.Request, w http.ResponseWrit
 	}
 	retValOfHandler := reflect.New(info.typeOfArgIsIsHandlerElem)
 
-	ret := func() *HttpContext1 {
-		return &HttpContext1{
+	ret := func() *HttpContext {
+		return &HttpContext{
 			Req: r,
 			Res: w,
 		}
