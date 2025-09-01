@@ -126,10 +126,10 @@ func (h *handlerInfo) GetUriHandler() string {
 func (h *handlerInfo) GetHttpMethod() string {
 	return h.httpMethod
 }
-func (info *handlerInfo) generateHttpContext(w http.ResponseWriter, r *http.Request) Handler {
+func (info *handlerInfo) generatehttpContext(w http.ResponseWriter, r *http.Request) Handler {
 
-	ret := func() *HttpContext {
-		return &HttpContext{
+	ret := func() *httpContext {
+		return &httpContext{
 			Req: r,
 			Res: w,
 		}
@@ -156,13 +156,13 @@ func (info *handlerInfo) Invoke(w http.ResponseWriter, r *http.Request) ([]refle
 		return nil, err
 	}
 	if info.hasHttpContextInController {
-		fiedlOfHttpContextInController := controller.Elem().FieldByIndex(info.indexFieldIsHandlerInController)
-		if fiedlOfHttpContextInController.Kind() == reflect.Ptr {
-			httpContext := info.generateHttpContext(w, r)
-			fiedlOfHttpContextInController.Set(reflect.ValueOf(&httpContext))
+		fiedlOfhttpContextInController := controller.Elem().FieldByIndex(info.indexFieldIsHandlerInController)
+		if fiedlOfhttpContextInController.Kind() == reflect.Ptr {
+			httpContext := info.generatehttpContext(w, r)
+			fiedlOfhttpContextInController.Set(reflect.ValueOf(&httpContext))
 		} else {
-			httpContext := info.generateHttpContext(w, r)
-			fiedlOfHttpContextInController.Set(reflect.ValueOf(httpContext))
+			httpContext := info.generatehttpContext(w, r)
+			fiedlOfhttpContextInController.Set(reflect.ValueOf(httpContext))
 		}
 	}
 
@@ -232,8 +232,8 @@ func (info *handlerInfo) CreateHandlerValue(r *http.Request, w http.ResponseWrit
 
 			// var fx *Hnx = &h // fx là *Hnx
 
-			var retVale Handler = func() *HttpContext {
-				return &HttpContext{
+			var retVale Handler = func() *httpContext {
+				return &httpContext{
 					Req: r,
 					Res: w,
 				}
@@ -243,8 +243,8 @@ func (info *handlerInfo) CreateHandlerValue(r *http.Request, w http.ResponseWrit
 			retVal := reflect.ValueOf(retValePtr)
 			return retVal, retVal.Elem()
 		} else {
-			ret := func() *HttpContext {
-				return &HttpContext{
+			ret := func() *httpContext {
+				return &httpContext{
 					Req: r,
 					Res: w,
 				}
@@ -256,8 +256,8 @@ func (info *handlerInfo) CreateHandlerValue(r *http.Request, w http.ResponseWrit
 	}
 	retValOfHandler := reflect.New(info.typeOfArgIsIsHandlerElem)
 
-	ret := func() *HttpContext {
-		return &HttpContext{
+	ret := func() *httpContext {
+		return &httpContext{
 			Req: r,
 			Res: w,
 		}
@@ -265,13 +265,13 @@ func (info *handlerInfo) CreateHandlerValue(r *http.Request, w http.ResponseWrit
 	retValOfHandlerFn := reflect.ValueOf(ret)
 	retValOfHandler.Elem().FieldByIndex(info.indexFieldIshandler).Set(retValOfHandlerFn)
 	return retValOfHandler, retValOfHandlerFn
-	// httpContextValue := reflect.New(info.typeOfArgIsHttpContextElem)
+	// httpContextValue := reflect.New(info.typeOfArgIshttpContextElem)
 	// httpContextValue.Elem().FieldByIndex(info.reqFieldIndex).Set(reqValue)
 	// httpContextValue.Elem().FieldByIndex(info.resFieldIndex).Set(resValue)
 	// return &httpContextValue, nil
 }
-func (info *handlerInfo) CreateHttpContextDelete(reqValue, resValue reflect.Value) (*reflect.Value, error) {
-	// httpContextValue := reflect.New(info.typeOfArgIsHttpContextElem)
+func (info *handlerInfo) CreatehttpContextDelete(reqValue, resValue reflect.Value) (*reflect.Value, error) {
+	// httpContextValue := reflect.New(info.typeOfArgIshttpContextElem)
 	// httpContextValue.Elem().FieldByIndex(info.reqFieldIndex).Set(reqValue)
 	// httpContextValue.Elem().FieldByIndex(info.resFieldIndex).Set(resValue)
 	// return &httpContextValue, nil

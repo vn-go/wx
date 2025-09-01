@@ -9,6 +9,6 @@ import (
 type Media struct {
 }
 
-func (m *Media) Upload(ctx *wx.HttpContext, file multipart.FileHeader) (string, error) {
+func (m *Media) Upload(ctx *wx.Handler, file multipart.FileHeader) (string, error) {
 	return "heelo", nil
 }
