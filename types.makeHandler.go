@@ -80,18 +80,15 @@ func (h *handlerInfo) catchError(w http.ResponseWriter, err error) {
 //			return nil, fmt.Errorf("%s.Verify was not call, please call%s.Verify for setting up auth ", ret.typeOfFiedAuth.String(), ret.typeOfFiedAuth.String())
 //		}
 //	}
-func (h *handlerInfo) getAuth(w http.ResponseWriter, r *http.Request) (reflect.Value, error) {
+func (h *handlerInfo) getAuth(valueOfHandler reflect.Value, w http.ResponseWriter, r *http.Request) (reflect.Value, error) {
 	newMethodOfAuth, found := authUtils.GetNewMethod(h.typeOfFiedAuth)
 	if !found {
 		err := fmt.Errorf("%s.Verify was not call, please call%s.Verify for setting up auth ", h.typeOfFiedAuth.String(), h.typeOfFiedAuth.String())
 		return reflect.Value{}, NewServerError("server error", err)
 	}
 	ret := reflect.New(h.typeOfFiedAuth)
-	ctx := reflect.ValueOf(&httpContext{
-		Req: r,
-		Res: w,
-	})
-	retRun := newMethodOfAuth.Call([]reflect.Value{ctx})
+
+	retRun := newMethodOfAuth.Call([]reflect.Value{valueOfHandler})
 	last := retRun[len(retRun)-1]        // last return value
 	if last.IsValid() && !last.IsNil() { // safe checks
 		if err, ok := last.Interface().(error); ok {
@@ -186,7 +183,7 @@ func (info *handlerInfo) Invoke(w http.ResponseWriter, r *http.Request) ([]refle
 	var authValue reflect.Value
 	if info.isAuth {
 		var err error
-		authValue, err = info.getAuth(w, r)
+		authValue, err = info.getAuth(valueOfHandlerFunction, w, r)
 		if err != nil {
 			return nil, err
 		}

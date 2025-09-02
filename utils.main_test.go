@@ -527,7 +527,7 @@ type AuthExample struct {
 }
 
 func (ex *AuthExample) New() error {
-	ex.Authenticate.Verify(func(ctx *httpContext) (*User, error) {
+	ex.Authenticate.Verify(func(ctx Handler) (*User, error) {
 
 		return &User{}, nil
 	})
@@ -586,7 +586,7 @@ func (au *AuthExample2) Post(h *Handler, auth Authenticate[User]) (*User, error)
 	return auth.Data, nil
 }
 func TestAuthExample2Post(t *testing.T) {
-	(&Authenticate[User]{}).Verify(func(ctx *httpContext) (*User, error) {
+	(&Authenticate[User]{}).Verify(func(ctx Handler) (*User, error) {
 		return &User{}, nil
 	})
 	handler, err := MakeHandlerFromMethod[AuthExample2]("Post")
@@ -604,7 +604,7 @@ func TestAuthExample2Post(t *testing.T) {
 	assert.Equal(t, 200, res.Code)
 }
 func BenchmarkAuthExample2Post(t *testing.B) {
-	(&Authenticate[User]{}).Verify(func(ctx *httpContext) (*User, error) {
+	(&Authenticate[User]{}).Verify(func(ctx Handler) (*User, error) {
 		return &User{}, nil
 	})
 	handler, err := MakeHandlerFromMethod[AuthExample2]("Post")
@@ -633,7 +633,7 @@ func (au *AuthExample2) Post2(h *struct {
 	return h.Data, nil
 }
 func TestAuthExample2Post2(t *testing.T) {
-	(&Authenticate[User]{}).Verify(func(ctx *httpContext) (*User, error) {
+	(&Authenticate[User]{}).Verify(func(ctx Handler) (*User, error) {
 		return &User{}, nil
 	})
 	handler, err := MakeHandlerFromMethod[AuthExample2]("Post2")

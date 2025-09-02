@@ -47,7 +47,7 @@ type initVerify struct {
 
 var cacheVerify sync.Map
 
-func (oauth *Authenticate[T]) Verify(fn func(ctx *httpContext) (*T, error)) {
+func (oauth *Authenticate[T]) Verify(fn func(ctx Handler) (*T, error)) {
 	typ := reflect.TypeFor[T]()
 	actually, _ := cacheVerify.LoadOrStore(typ, &initVerify{})
 	actually.(*initVerify).once.Do(func() {
