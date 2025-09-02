@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"reflect"
 	"strings"
+	"sync"
 )
 
 type authUtilsType struct {
@@ -18,14 +19,40 @@ type authUtilsType struct {
 var authUtils = &authUtilsType{
 	fn:      map[reflect.Type]reflect.Value{},
 	pkgPath: reflect.TypeFor[authUtilsType]().PkgPath(),
-	prefix:  strings.Split(reflect.TypeFor[OAuth2[any]]().Name(), "[")[0] + "[",
+	prefix:  strings.Split(reflect.TypeFor[Authenticate[any]]().Name(), "[")[0] + "[",
 }
 
-type OAuth2[T any] struct {
+func (auth *authUtilsType) GetNewMethod(typ reflect.Type) (reflect.Value, bool) {
+	if typ.Kind() == reflect.Ptr {
+		typ = typ.Elem()
+	}
+	if fieldData, ok := typ.FieldByName("Data"); ok {
+
+		if ret, ok := auth.fn[fieldData.Type.Elem()]; ok {
+			return ret, ok
+		} else {
+			return reflect.Value{}, false
+		}
+	}
+	return reflect.Value{}, false
 }
 
-func (oauth *OAuth2[T]) Verify(fn func(ctx *httpContext) (*T, error)) {
-	authUtils.fn[reflect.TypeFor[T]()] = reflect.ValueOf(fn)
+type Authenticate[T any] struct {
+	Data *T
+	Err  error
+}
+type initVerify struct {
+	once sync.Once
+}
+
+var cacheVerify sync.Map
+
+func (oauth *Authenticate[T]) Verify(fn func(ctx *httpContext) (*T, error)) {
+	typ := reflect.TypeFor[T]()
+	actually, _ := cacheVerify.LoadOrStore(typ, &initVerify{})
+	actually.(*initVerify).once.Do(func() {
+		authUtils.fn[reflect.TypeFor[T]()] = reflect.ValueOf(fn)
+	})
 
 }
 

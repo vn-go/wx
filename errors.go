@@ -254,3 +254,13 @@ func NewUnacceptableContentError(code, message string) error {
 		},
 	}
 }
+
+type UnauthorizedError struct {
+}
+
+func (e *UnauthorizedError) Error() string {
+	return "Unauthorized"
+}
+func NewUnauthorizedError() error {
+	return &UnauthorizedError{}
+}

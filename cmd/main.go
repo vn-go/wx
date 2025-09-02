@@ -1,8 +1,6 @@
 package main
 
 import (
-	"fmt"
-
 	"github.com/vn-go/wx"
 )
 
@@ -12,8 +10,17 @@ type Oauth struct {
 func (auth *Oauth) Login(ctx wx.Handler, body wx.Form[struct {
 	Username string
 	Password string
-}]) {
-	fmt.Println(body)
+}]) (any, error) {
+	if body.Data.Username == "admin" && body.Data.Password == "admin" {
+		return &struct {
+			AccessToken string `json:"access_token"`
+			TokenType   string `json:"token_type"`
+		}{
+			AccessToken: "123456",
+			TokenType:   "bearer",
+		}, nil
+	}
+	return nil, wx.NewUnauthorizedError()
 }
 func main() {
 	if err := wx.Routes("/api", &Media{}, &Oauth{}); err != nil {

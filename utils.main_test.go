@@ -522,25 +522,26 @@ type OK[T any] struct {
 }
 type AuthExample struct {
 	Handler
-	OAuth2[User]
+	Authenticate[User]
 	FX *AuthExample
 }
 
 func (ex *AuthExample) New() error {
-	ex.Verify(func(ctx *httpContext) (*User, error) {
+	ex.Authenticate.Verify(func(ctx *httpContext) (*User, error) {
+
 		return &User{}, nil
 	})
 	return nil
 }
 func (ex *AuthExample) Post(ctx OK[Handler]) {
-	fmt.Println(ctx)
+	//fmt.Println(ctx)
 
 }
 
 type User001 struct {
 }
 
-func TestAuthFind(t *testing.T) {
+func TestAuthExamplePost(t *testing.T) {
 
 	handler, err := MakeHandlerFromMethod[AuthExample]("Post")
 	assert.NoError(t, err)
@@ -554,4 +555,98 @@ func TestAuthFind(t *testing.T) {
 	assert.NoError(t, err)
 	res := Mock.NewRes()
 	fnHandler.ServeHTTP(res, req)
+	assert.Equal(t, 200, res.Code)
+}
+func BenchmarkAuthExamplePost(t *testing.B) {
+	handler, err := MakeHandlerFromMethod[AuthExample]("Post")
+	assert.NoError(t, err)
+	assert.Equal(t, true, handler.isAuth)
+	assert.Equal(t, []int{1}, handler.fieldIndexOfAuth)
+	assert.Equal(t, 0, handler.indexOfArgIsAuth)
+	assert.NotNil(t, handler)
+	fnHandler := handler.Handler()
+	assert.NotNil(t, fnHandler)
+	req, err := Mock.JsonRequest("POST", handler.GetUriHandler(), nil)
+	assert.NoError(t, err)
+	res := Mock.NewRes()
+	t.ReportAllocs()
+	t.ResetTimer()
+	for i := 0; i < t.N; i++ {
+		fnHandler.ServeHTTP(res, req)
+		//assert.Equal(t, 401, res.Code)
+	}
+
+}
+
+type AuthExample2 struct {
+	Handler
+}
+
+func (au *AuthExample2) Post(h *Handler, auth Authenticate[User]) (*User, error) {
+	return auth.Data, nil
+}
+func TestAuthExample2Post(t *testing.T) {
+	(&Authenticate[User]{}).Verify(func(ctx *httpContext) (*User, error) {
+		return &User{}, nil
+	})
+	handler, err := MakeHandlerFromMethod[AuthExample2]("Post")
+	assert.NoError(t, err)
+	assert.Equal(t, true, handler.isAuth)
+	assert.Equal(t, []int{}, handler.fieldIndexOfAuth)
+	assert.Equal(t, 2, handler.indexOfArgIsAuth)
+	assert.NotNil(t, handler)
+	fnHandler := handler.Handler()
+	assert.NotNil(t, fnHandler)
+	req, err := Mock.JsonRequest("POST", handler.GetUriHandler(), nil)
+	assert.NoError(t, err)
+	res := Mock.NewRes()
+	fnHandler.ServeHTTP(res, req)
+	assert.Equal(t, 200, res.Code)
+}
+func BenchmarkAuthExample2Post(t *testing.B) {
+	(&Authenticate[User]{}).Verify(func(ctx *httpContext) (*User, error) {
+		return &User{}, nil
+	})
+	handler, err := MakeHandlerFromMethod[AuthExample2]("Post")
+	assert.NoError(t, err)
+	assert.Equal(t, true, handler.isAuth)
+	assert.Equal(t, []int{}, handler.fieldIndexOfAuth)
+	assert.Equal(t, 2, handler.indexOfArgIsAuth)
+	assert.NotNil(t, handler)
+	fnHandler := handler.Handler()
+	assert.NotNil(t, fnHandler)
+	req, err := Mock.JsonRequest("POST", handler.GetUriHandler(), nil)
+	assert.NoError(t, err)
+	res := Mock.NewRes()
+	t.ReportAllocs()
+	t.ResetTimer()
+	for i := 0; i < t.N; i++ {
+		fnHandler.ServeHTTP(res, req)
+	}
+
+	//assert.Equal(t, 200, res.Code)
+}
+func (au *AuthExample2) Post2(h *struct {
+	Handler
+	Authenticate[User]
+}) (*User, error) {
+	return h.Data, nil
+}
+func TestAuthExample2Post2(t *testing.T) {
+	(&Authenticate[User]{}).Verify(func(ctx *httpContext) (*User, error) {
+		return &User{}, nil
+	})
+	handler, err := MakeHandlerFromMethod[AuthExample2]("Post2")
+	assert.NoError(t, err)
+	assert.Equal(t, true, handler.isAuth)
+	assert.Equal(t, []int{1}, handler.fieldIndexOfAuth)
+	assert.Equal(t, 1, handler.indexOfArgIsAuth)
+	assert.NotNil(t, handler)
+	fnHandler := handler.Handler()
+	assert.NotNil(t, fnHandler)
+	req, err := Mock.JsonRequest("POST", handler.GetUriHandler(), nil)
+	assert.NoError(t, err)
+	res := Mock.NewRes()
+	fnHandler.ServeHTTP(res, req)
+	assert.Equal(t, 200, res.Code)
 }

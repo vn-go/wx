@@ -56,6 +56,9 @@ func (h *handlerInfo) catchError(w http.ResponseWriter, err error) {
 	case *ServiceInitError, *ServerError:
 		status = http.StatusInternalServerError // 500
 		body = toJSON("server_error", e.Error())
+	case *UnauthorizedError:
+		status = http.StatusUnauthorized // 500
+		body = toJSON("Unauthorized", e.Error())
 
 	default:
 		// fallback for unexpected error
@@ -68,8 +71,43 @@ func (h *handlerInfo) catchError(w http.ResponseWriter, err error) {
 	w.WriteHeader(status)
 	_, _ = w.Write(body)
 }
+
+// func (h *handlerInfo) getVerifyMethodOfAuth() {
+
+//		var found bool
+//		h.newMethodOfAuth, found = authUtils.GetNewMethod(h.typeOfFiedAuth)
+//		if !found {
+//			return nil, fmt.Errorf("%s.Verify was not call, please call%s.Verify for setting up auth ", ret.typeOfFiedAuth.String(), ret.typeOfFiedAuth.String())
+//		}
+//	}
+func (h *handlerInfo) getAuth(w http.ResponseWriter, r *http.Request) (reflect.Value, error) {
+	newMethodOfAuth, found := authUtils.GetNewMethod(h.typeOfFiedAuth)
+	if !found {
+		err := fmt.Errorf("%s.Verify was not call, please call%s.Verify for setting up auth ", h.typeOfFiedAuth.String(), h.typeOfFiedAuth.String())
+		return reflect.Value{}, NewServerError("server error", err)
+	}
+	ret := reflect.New(h.typeOfFiedAuth)
+	ctx := reflect.ValueOf(&httpContext{
+		Req: r,
+		Res: w,
+	})
+	retRun := newMethodOfAuth.Call([]reflect.Value{ctx})
+	last := retRun[len(retRun)-1]        // last return value
+	if last.IsValid() && !last.IsNil() { // safe checks
+		if err, ok := last.Interface().(error); ok {
+			return reflect.Value{}, err
+		}
+	}
+	ret.Elem().FieldByName("Data").Set(retRun[0])
+	if h.typeOfFiedAuth.Kind() == reflect.Struct {
+		return ret.Elem(), nil
+	}
+	return ret, nil
+
+}
 func (h *handlerInfo) Handler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+
 		if r.Method != h.httpMethod {
 			w.WriteHeader(http.StatusMethodNotAllowed)
 			return
@@ -137,12 +175,21 @@ func (info *handlerInfo) createHandler(w http.ResponseWriter, r *http.Request) H
 	return ret
 }
 func (info *handlerInfo) Invoke(w http.ResponseWriter, r *http.Request) ([]reflect.Value, error) {
+
 	contentType := r.Header.Get("Content-Type")
 	valueOfArgsIsHandler, valueOfHandlerFunction := info.CreateHandlerValue(r, w)
 	controller, err := info.CreateController(valueOfHandlerFunction)
 	if err != nil {
 		// http.Error(w, err.Error(), http.StatusInternalServerError)
 		return nil, err
+	}
+	var authValue reflect.Value
+	if info.isAuth {
+		var err error
+		authValue, err = info.getAuth(w, r)
+		if err != nil {
+			return nil, err
+		}
 	}
 	// valueOfReq := reflect.ValueOf(r)
 	// valueOfRes := reflect.ValueOf(w)
@@ -171,6 +218,24 @@ func (info *handlerInfo) Invoke(w http.ResponseWriter, r *http.Request) ([]refle
 	args := make([]reflect.Value, info.method.Type.NumIn())
 	args[0] = *controller
 	args[info.indexOfArgIsHandler] = valueOfArgsIsHandler
+	if info.indexOfArgIsAuth > -1 {
+		if args[info.indexOfArgIsAuth].Kind() == reflect.Ptr {
+			if len(info.fieldIndexOfAuth) > 0 {
+				args[info.indexOfArgIsAuth].Elem().FieldByIndex(info.fieldIndexOfAuth).Set(authValue)
+			} else {
+				args[info.indexOfArgIsAuth] = authValue
+			}
+
+		} else {
+			if len(info.fieldIndexOfAuth) > 0 {
+				args[info.indexOfArgIsAuth].Elem().FieldByIndex(info.fieldIndexOfAuth).Set(authValue)
+			} else {
+				args[info.indexOfArgIsAuth] = authValue
+			}
+
+		}
+	}
+
 	if info.indexOfArgIsRequestBody != -1 {
 		bodyValue, err := info.GetBodyValue(r, contentType)
 		if err != nil {

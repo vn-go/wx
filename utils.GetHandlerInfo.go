@@ -136,6 +136,16 @@ func (u *utilsType) getHandlerInfo(method reflect.Method) (*handlerInfo, error) 
 			}); found {
 				ret.indexOfArgIsAuth = indexOfAgr
 				ret.fieldIndexOfAuth = fieldIndex
+				if len(fieldIndex) > 0 {
+					ret.typeOfFiedAuth = method.Type.In(indexOfAgr)
+					if ret.typeOfFiedAuth.Kind() == reflect.Ptr {
+						ret.typeOfFiedAuth = ret.typeOfFiedAuth.Elem()
+						ret.typeOfFiedAuth = ret.typeOfFiedAuth.FieldByIndex(fieldIndex).Type
+					}
+				} else {
+					ret.typeOfFiedAuth = method.Type.In(indexOfAgr)
+				}
+
 				ret.isAuth = true
 			}
 

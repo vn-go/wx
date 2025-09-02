@@ -82,5 +82,7 @@ type handlerInfo struct {
 
 	indexOfArgIsAuth int
 	fieldIndexOfAuth []int
+	typeOfFiedAuth   reflect.Type
 	isAuth           bool
+	// newMethodOfAuth  reflect.Value
 }
