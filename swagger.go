@@ -178,3 +178,17 @@ func (sb *swaggerBuild) LoadFromRoutes() *swaggerBuild {
 
 	return sb
 }
+
+/*
+Enable OAuth2 Password flow on Swagger docs.
+
+@param TokenUrl the URL to obtain the token
+*/
+func (sb *swaggerBuild) OAuth2Password(TokenUrl string) *swaggerBuild {
+	sb.swagger.OAuth2Password(TokenUrl)
+	return sb
+}
+func (sb *swaggerBuild) OAuth2AuthCodePKCE(AuthorizationUrl string, TokenUrl string, Scopes map[string]string) *swaggerBuild {
+	sb.swagger.OAuth2AuthCodePKCE(AuthorizationUrl, TokenUrl, Scopes)
+	return sb
+}

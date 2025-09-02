@@ -2,8 +2,10 @@ package wx
 
 import (
 	"reflect"
+	"strings"
 	"sync"
 
+	"github.com/vn-go/wx/internal"
 	"github.com/vn-go/wx/mock"
 )
 
@@ -32,15 +34,22 @@ import (
 //	}
 func (u *utilsType) findIndexOfFieldIsHandler(typ reflect.Type, visisted map[reflect.Type]bool) ([]int, bool) {
 	if _, ok := visisted[typ]; ok {
+		// msg := "recurisve"
+		// for k, _ := range visisted {
+		// 	msg += k.String() + "-->"
+		// }
+		// panic(msg)
 		return nil, false
 	}
+
 	if typ == u.controllers.httpContextType || typ == u.controllers.httpContextTypePtr {
 		return []int{}, true
 	}
 	if typ.Kind() == reflect.Ptr {
 		typ = typ.Elem()
 	}
-	if typ.Kind() == reflect.Struct {
+	visisted[typ] = true
+	if typ.Kind() == reflect.Struct && typ != reflect.TypeFor[httpContext]() && typ != reflect.TypeFor[*httpContext]() {
 		for i := 0; i < typ.NumField(); i++ {
 			if indexOfFields, found := u.findIndexOfFieldIsHandler(typ.Field(i).Type, visisted); found {
 				return append(typ.Field(i).Index, indexOfFields...), true
@@ -83,10 +92,7 @@ func (u *utilsType) getHandlerInfo(method reflect.Method) (*handlerInfo, error) 
 			if !found {
 				return nil, nil
 			}
-			// reqIndex, resIndex, err := u.extractIndexFieldOfResAndReq(argType)
-			// if err != nil {
-			// 	return nil, err
-			// }
+
 			controllerType := method.Type.In(0)
 			controllerTypeElem := controllerType
 			if controllerType.Kind() == reflect.Ptr {
@@ -107,10 +113,11 @@ func (u *utilsType) getHandlerInfo(method reflect.Method) (*handlerInfo, error) 
 				// reqFieldIndex:           reqIndex,
 				method: method,
 
-				controllerTypeElem:     controllerTypeElem,
-				controllerType:         controllerType,
-				indexOfArhIsAuthClaims: -1,
-				isNoOutPut:             isNoOutPut,
+				controllerTypeElem: controllerTypeElem,
+				controllerType:     controllerType,
+
+				isNoOutPut:       isNoOutPut,
+				indexOfArgIsAuth: -1,
 			}
 			fiedIndexOfHttpContextInController, ok := u.findIndexOfFieldIsHandler(controllerTypeElem, map[reflect.Type]bool{})
 			if ok {
@@ -119,11 +126,19 @@ func (u *utilsType) getHandlerInfo(method reflect.Method) (*handlerInfo, error) 
 
 			}
 
-			method, err := utils.controllers.FindNewMeyhod(ret)
+			newMethod, err := utils.controllers.FindNewMeyhod(ret)
 			if err != nil {
 				return nil, err
 			}
-			ret.conrollerNewMethod = method
+			ret.conrollerNewMethod = newMethod
+			if indexOfAgr, fieldIndex, found := internal.FindFirstArg(method, func(t reflect.Type) bool {
+				return t.PkgPath() == authUtils.pkgPath && strings.HasPrefix(t.Name(), authUtils.prefix)
+			}); found {
+				ret.indexOfArgIsAuth = indexOfAgr
+				ret.fieldIndexOfAuth = fieldIndex
+				ret.isAuth = true
+			}
+
 			return ret, nil
 		}
 	}

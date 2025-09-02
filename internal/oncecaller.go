@@ -87,3 +87,70 @@ func ValToString(val interface{}) string {
 	// fallback: fmt.Sprint
 	return fmt.Sprint(val)
 }
+
+func findFirstField(typ reflect.Type, match func(t reflect.Type) bool, visited map[string]bool) ([]int, bool) {
+	if _, ok := visited[typ.String()]; ok {
+		return nil, false
+	}
+	visited[typ.String()] = true
+	if match(typ) {
+		return []int{}, true
+	}
+	if typ.Kind() == reflect.Ptr {
+		typ = typ.Elem()
+	}
+	if typ.Kind() != reflect.Struct {
+		return nil, false
+	}
+	for i := 0; i < typ.NumField(); i++ {
+		if indexes, found := findFirstField(typ.Field(i).Type, match, visited); found {
+			return append(typ.Field(i).Index, indexes...), true
+		}
+	}
+	return nil, false
+}
+
+func FindFirstField(typ reflect.Type, match func(t reflect.Type) bool) ([]int, bool) {
+	return findFirstField(typ, match, map[string]bool{})
+}
+
+type findFieldIndexByTypeResult struct {
+	index []int
+	found bool
+}
+type initFindFieldIndexByType struct {
+	val  findFieldIndexByTypeResult
+	once sync.Once
+}
+
+var cacheFindFieldIndexByType sync.Map
+
+func FindFirstFieldOnce(typ reflect.Type, match func(t reflect.Type) (string, bool)) ([]int, bool) {
+	key, ok := match(typ)
+	if !ok {
+		return nil, false
+	}
+
+	cacheKey := typ.PkgPath() + "/" + typ.String() + "::" + key
+	actually, _ := cacheFindFieldIndexByType.LoadOrStore(cacheKey, &initFindFieldIndexByType{})
+	item := actually.(*initFindFieldIndexByType)
+
+	item.once.Do(func() {
+		index, found := FindFirstField(typ, func(t reflect.Type) bool {
+			_, ok := match(t)
+			return ok
+		})
+		item.val = findFieldIndexByTypeResult{index, found}
+	})
+
+	return item.val.index, item.val.found
+}
+
+func FindFirstArg(method reflect.Method, match func(t reflect.Type) bool) (int, []int, bool) {
+	for i := 0; i < method.Type.NumIn(); i++ {
+		if index, found := FindFirstField(method.Type.In(i), match); found {
+			return i, index, true
+		}
+	}
+	return 0, nil, false
+}

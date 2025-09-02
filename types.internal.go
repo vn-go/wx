@@ -61,9 +61,9 @@ type handlerInfo struct {
 	listOfIndexFieldIsFormUploadFile []int
 	typeOfRequestBodyElem            reflect.Type
 	typeOfRequestBody                reflect.Type
-	indexOfArhIsAuthClaims           int
-	indexOfArgIsRequestBody          int
-	isFormPost                       bool
+	// indexOfArhIsAuthClaims           int
+	indexOfArgIsRequestBody int
+	isFormPost              bool
 	// formPostTypeEle                  reflect.Type
 	// formPostType                     reflect.Type
 	httpMethod string
@@ -79,4 +79,8 @@ type handlerInfo struct {
 	// fieldIndexOfReqController          []int
 
 	hasHttpContextInController bool
+
+	indexOfArgIsAuth int
+	fieldIndexOfAuth []int
+	isAuth           bool
 }

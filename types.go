@@ -9,6 +9,26 @@ import (
 	"strings"
 )
 
+type authUtilsType struct {
+	fn      map[reflect.Type]reflect.Value
+	pkgPath string
+	prefix  string
+}
+
+var authUtils = &authUtilsType{
+	fn:      map[reflect.Type]reflect.Value{},
+	pkgPath: reflect.TypeFor[authUtilsType]().PkgPath(),
+	prefix:  strings.Split(reflect.TypeFor[OAuth2[any]]().Name(), "[")[0] + "[",
+}
+
+type OAuth2[T any] struct {
+}
+
+func (oauth *OAuth2[T]) Verify(fn func(ctx *httpContext) (*T, error)) {
+	authUtils.fn[reflect.TypeFor[T]()] = reflect.ValueOf(fn)
+
+}
+
 /*
 Any published method of a struct that has exactly one argument which is a Handler or an embedded HttpContext is called a HttpContext method.
 */

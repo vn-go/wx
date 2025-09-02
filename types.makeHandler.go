@@ -126,7 +126,7 @@ func (h *handlerInfo) GetUriHandler() string {
 func (h *handlerInfo) GetHttpMethod() string {
 	return h.httpMethod
 }
-func (info *handlerInfo) generatehttpContext(w http.ResponseWriter, r *http.Request) Handler {
+func (info *handlerInfo) createHandler(w http.ResponseWriter, r *http.Request) Handler {
 
 	ret := func() *httpContext {
 		return &httpContext{
@@ -158,11 +158,13 @@ func (info *handlerInfo) Invoke(w http.ResponseWriter, r *http.Request) ([]refle
 	if info.hasHttpContextInController {
 		fiedlOfhttpContextInController := controller.Elem().FieldByIndex(info.indexFieldIsHandlerInController)
 		if fiedlOfhttpContextInController.Kind() == reflect.Ptr {
-			httpContext := info.generatehttpContext(w, r)
-			fiedlOfhttpContextInController.Set(reflect.ValueOf(&httpContext))
+			handler := info.createHandler(w, r)
+			fiedlOfhttpContextInController.Set(reflect.ValueOf(&handler))
 		} else {
-			httpContext := info.generatehttpContext(w, r)
-			fiedlOfhttpContextInController.Set(reflect.ValueOf(httpContext))
+			//"reflect: Call using *wx.OK[github.com/vn-go/wx.Handler] as type wx.OK[github.com/vn-go/wx.Handler]"
+			handler := info.createHandler(w, r)
+			fiedlOfhttpContextInController.Set(reflect.ValueOf(handler))
+			//fiedlOfhttpContextInController = fiedlOfhttpContextInController.Addr()
 		}
 	}
 
@@ -210,7 +212,10 @@ var cacheCreateControllerOnce sync.Map
 func (info *handlerInfo) CreateController(valueOfHandlerFunction reflect.Value) (*reflect.Value, error) {
 	controllerValue := reflect.New(info.controllerType.Elem())
 	if info.conrollerNewMethod != nil {
-		controllerValue.Elem().FieldByIndex(info.indexFieldIsHandlerInController).Set(valueOfHandlerFunction)
+		if info.indexFieldIsHandlerInController != nil {
+			controllerValue.Elem().FieldByIndex(info.indexFieldIsHandlerInController).Set(valueOfHandlerFunction)
+		}
+
 		ret := info.conrollerNewMethod.Func.Call([]reflect.Value{controllerValue})
 		if !ret[0].IsZero() {
 			if ret[0].Elem().Interface() != nil {
@@ -264,6 +269,10 @@ func (info *handlerInfo) CreateHandlerValue(r *http.Request, w http.ResponseWrit
 	}
 	retValOfHandlerFn := reflect.ValueOf(ret)
 	retValOfHandler.Elem().FieldByIndex(info.indexFieldIshandler).Set(retValOfHandlerFn)
+	if info.typeOfArgIsIsHandler.Kind() == reflect.Struct {
+		retValOfHandler = retValOfHandler.Elem()
+	}
+
 	return retValOfHandler, retValOfHandlerFn
 	// httpContextValue := reflect.New(info.typeOfArgIshttpContextElem)
 	// httpContextValue.Elem().FieldByIndex(info.reqFieldIndex).Set(reqValue)
@@ -283,6 +292,9 @@ func (info *handlerInfo) GetBodyValue(r *http.Request, contentType string) (refl
 	if strings.HasPrefix(contentType, "multipart/form-data; ") {
 		return info.GetMultipartFormDataValue(r)
 	}
+	if contentType == "application/x-www-form-urlencoded" {
+		return info.GetXWwwFormUrlencoded(r)
+	}
 	if contentType == "application/json" && info.isFormPost {
 		/*
 						{
@@ -295,6 +307,7 @@ func (info *handlerInfo) GetBodyValue(r *http.Request, contentType string) (refl
 			"Content-Type application/json is not supported. Please use multipart/form-data.",
 		)
 	}
+
 	bodyData := reflect.New(info.typeOfRequestBodyElem)
 	if r.Body != nil && r.Body != http.NoBody {
 		defer r.Body.Close() // <-- auto close after read body of request
@@ -339,6 +352,95 @@ func (info *handlerInfo) GetMultipartFormDataValue(r *http.Request) (reflect.Val
 		ret := reflect.New(info.typeOfRequestBodyElem)
 		if fieldData, ok := info.typeOfRequestBodyElem.FieldByName("Data"); ok {
 			dataVal, err := info.getMultipartFormDataValueByType(fieldData.Type, r)
+			if err != nil {
+				return reflect.Value{}, NewServerError("Internal server error", err)
+			}
+			fieldSet := ret.Elem().FieldByIndex(fieldData.Index)
+			if fieldSet.CanConvert(dataVal.Type()) {
+				fieldSet.Set(dataVal)
+			} else if dataVal.Kind() == reflect.Ptr {
+				dataVal = dataVal.Elem()
+				if fieldSet.CanConvert(dataVal.Type()) {
+					fieldSet.Set(dataVal)
+				}
+
+			}
+
+			if info.typeOfRequestBody.Kind() == reflect.Struct {
+				return ret.Elem(), nil
+			}
+			return ret, nil
+		} else {
+			return reflect.Value{}, NewServerError("Internal server error", fmt.Errorf("%s do not have Data Field", info.typeOfRequestBodyElem.String()))
+		}
+
+	} else {
+
+		return info.getMultipartFormDataValueByType(info.typeOfRequestBody, r)
+	}
+}
+func (info *handlerInfo) getXWwwFormUrlencoded(bodyType reflect.Type, r *http.Request) (reflect.Value, error) {
+	var target reflect.Value
+	var targetType reflect.Type
+
+	ret := reflect.New(bodyType)
+
+	target = ret.Elem()
+	targetType = bodyType
+	if targetType.Kind() == reflect.Ptr {
+		targetType = targetType.Elem()
+	}
+	err := r.ParseForm()
+	if err != nil {
+		return reflect.Value{}, NewBodyParseError("can not read data", err)
+	}
+	for key, values := range r.Form {
+		field := info.getFieldByName(targetType, key)
+		if field == nil || len(values) == 0 {
+			continue
+		}
+		fv := target.FieldByIndex(field.Index)
+
+		switch fv.Kind() {
+		case reflect.String:
+			fv.SetString(values[0])
+		case reflect.Slice:
+			if fv.Type().Elem().Kind() == reflect.String {
+				fv.Set(reflect.ValueOf(values))
+			}
+		case reflect.Ptr:
+			elemKind := fv.Type().Elem().Kind()
+			if elemKind == reflect.String {
+				ptr := reflect.New(fv.Type().Elem())
+				ptr.Elem().SetString(values[0])
+				fv.Set(ptr)
+			} else if elemKind == reflect.Struct {
+				ptr := reflect.New(fv.Type().Elem())
+				if err := json.Unmarshal([]byte(values[0]), ptr.Interface()); err != nil {
+					return reflect.Value{}, err
+				}
+				fv.Set(ptr)
+			}
+		case reflect.Struct:
+			if err := json.Unmarshal([]byte(values[0]), fv.Addr().Interface()); err != nil {
+				return reflect.Value{}, err
+			}
+		}
+	}
+
+	// set files
+
+	if bodyType.Kind() == reflect.Struct {
+		return ret.Elem(), nil
+	}
+
+	return ret, nil
+}
+func (info *handlerInfo) GetXWwwFormUrlencoded(r *http.Request) (reflect.Value, error) {
+	if isFormType(info.typeOfRequestBodyElem) {
+		ret := reflect.New(info.typeOfRequestBodyElem)
+		if fieldData, ok := info.typeOfRequestBodyElem.FieldByName("Data"); ok {
+			dataVal, err := info.getXWwwFormUrlencoded(fieldData.Type, r)
 			if err != nil {
 				return reflect.Value{}, NewServerError("Internal server error", err)
 			}

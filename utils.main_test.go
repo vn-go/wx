@@ -22,6 +22,9 @@ func TestPostNoBodyMethod(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, handler)
 	fnHandler := handler.Handler()
+	assert.Equal(t, false, handler.isAuth)
+	assert.Nil(t, handler.fieldIndexOfAuth)
+	assert.Equal(t, -1, handler.indexOfArgIsAuth)
 	assert.NotNil(t, fnHandler)
 	req, err := Mock.JsonRequest("POST", handler.GetUriHandler(), nil)
 	assert.NoError(t, err)
@@ -61,6 +64,9 @@ func TestGetMethod(t *testing.T) {
 	handler, err := MakeHandlerFromMethod[Example]("GetMethod")
 	assert.NoError(t, err)
 	assert.NotNil(t, handler)
+	assert.Equal(t, false, handler.isAuth)
+	assert.Nil(t, handler.fieldIndexOfAuth)
+	assert.Equal(t, -1, handler.indexOfArgIsAuth)
 	fnHandler := handler.Handler()
 	assert.NotNil(t, fnHandler)
 	req, err := Mock.JsonRequest("GET", handler.GetUriHandler(), nil)
@@ -76,6 +82,9 @@ func BenchmarkGetMethod(t *testing.B) {
 	handler, err := MakeHandlerFromMethod[Example]("GetMethod")
 	assert.NoError(t, err)
 	assert.NotNil(t, handler)
+	assert.Equal(t, false, handler.isAuth)
+	assert.Nil(t, handler.fieldIndexOfAuth)
+	assert.Equal(t, -1, handler.indexOfArgIsAuth)
 	fnHandler := handler.Handler()
 	assert.NotNil(t, fnHandler)
 	req, err := Mock.JsonRequest("GET", handler.GetUriHandler(), nil)
@@ -102,6 +111,9 @@ func TestPostBodyMethod(t *testing.T) {
 	handler, err := MakeHandlerFromMethod[Example]("PostBodyMethod")
 	assert.NoError(t, err)
 	assert.NotNil(t, handler)
+	assert.Equal(t, false, handler.isAuth)
+	assert.Nil(t, handler.fieldIndexOfAuth)
+	assert.Equal(t, -1, handler.indexOfArgIsAuth)
 	fnHandler := handler.Handler()
 	assert.NotNil(t, fnHandler)
 	req, err := Mock.JsonRequest("POST", handler.GetUriHandler(), struct {
@@ -153,6 +165,9 @@ func TestSimpleUpload(t *testing.T) {
 	handler, err := MakeHandlerFromMethod[Example]("SimpleUpload")
 	assert.NoError(t, err)
 	assert.NotNil(t, handler)
+	assert.Equal(t, false, handler.isAuth)
+	assert.Nil(t, handler.fieldIndexOfAuth)
+	assert.Equal(t, -1, handler.indexOfArgIsAuth)
 	fnHandler := handler.Handler()
 	assert.NotNil(t, fnHandler)
 
@@ -186,6 +201,9 @@ func TestSimpleUploadFiles(t *testing.T) {
 	handler, err := MakeHandlerFromMethod[Example]("SimpleUploadFiles")
 	assert.NoError(t, err)
 	assert.NotNil(t, handler)
+	assert.Equal(t, false, handler.isAuth)
+	assert.Nil(t, handler.fieldIndexOfAuth)
+	assert.Equal(t, -1, handler.indexOfArgIsAuth)
 	fnHandler := handler.Handler()
 	assert.NotNil(t, fnHandler)
 	mockFiles := []mockFile{}
@@ -239,6 +257,9 @@ func TestSimpleUploadFiles2(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, handler)
 	fnHandler := handler.Handler()
+	assert.Equal(t, false, handler.isAuth)
+	assert.Nil(t, handler.fieldIndexOfAuth)
+	assert.Equal(t, -1, handler.indexOfArgIsAuth)
 	assert.NotNil(t, fnHandler)
 	mockFiles := []mockFile{}
 	for i := 0; i < 10; i++ {
@@ -264,6 +285,9 @@ func BenchmarkSimpleUploadFiles2(t *testing.B) {
 	handler, err := MakeHandlerFromMethod[Example]("SimpleUploadFiles2")
 	assert.NoError(t, err)
 	assert.NotNil(t, handler)
+	assert.Equal(t, false, handler.isAuth)
+	assert.Nil(t, handler.fieldIndexOfAuth)
+	assert.Equal(t, -1, handler.indexOfArgIsAuth)
 	fnHandler := handler.Handler()
 	assert.NotNil(t, fnHandler)
 	mockFiles := []mockFile{}
@@ -299,6 +323,9 @@ func TestFormPost(t *testing.T) {
 	handler, err := MakeHandlerFromMethod[Example]("FormPost")
 	assert.NoError(t, err)
 	assert.NotNil(t, handler)
+	assert.Equal(t, false, handler.isAuth)
+	assert.Nil(t, handler.fieldIndexOfAuth)
+	assert.Equal(t, -1, handler.indexOfArgIsAuth)
 	fnHandler := handler.Handler()
 	assert.NotNil(t, fnHandler)
 
@@ -315,6 +342,9 @@ func BenchmarkFormPost(t *testing.B) {
 	handler, err := MakeHandlerFromMethod[Example]("FormPost")
 	assert.NoError(t, err)
 	assert.NotNil(t, handler)
+	assert.Equal(t, false, handler.isAuth)
+	assert.Nil(t, handler.fieldIndexOfAuth)
+	assert.Equal(t, -1, handler.indexOfArgIsAuth)
 	fnHandler := handler.Handler()
 	assert.NotNil(t, fnHandler)
 
@@ -343,6 +373,9 @@ func TestFormPost2(t *testing.T) {
 	handler, err := MakeHandlerFromMethod[Example]("FormPost2")
 	assert.NoError(t, err)
 	assert.NotNil(t, handler)
+	assert.Equal(t, false, handler.isAuth)
+	assert.Nil(t, handler.fieldIndexOfAuth)
+	assert.Equal(t, -1, handler.indexOfArgIsAuth)
 	fnHandler := handler.Handler()
 	assert.NotNil(t, fnHandler)
 
@@ -366,6 +399,9 @@ func TestFormPost3(t *testing.T) {
 	handler, err := MakeHandlerFromMethod[Example]("FormPost3")
 	assert.NoError(t, err)
 	assert.NotNil(t, handler)
+	assert.Equal(t, false, handler.isAuth)
+	assert.Nil(t, handler.fieldIndexOfAuth)
+	assert.Equal(t, -1, handler.indexOfArgIsAuth)
 	fnHandler := handler.Handler()
 	assert.NotNil(t, fnHandler)
 
@@ -382,6 +418,9 @@ func BenchmarkFormPost3(t *testing.B) {
 	handler, err := MakeHandlerFromMethod[Example]("FormPost3")
 	assert.NoError(t, err)
 	assert.NotNil(t, handler)
+	assert.Equal(t, false, handler.isAuth)
+	assert.Nil(t, handler.fieldIndexOfAuth)
+	assert.Equal(t, -1, handler.indexOfArgIsAuth)
 	fnHandler := handler.Handler()
 	assert.NotNil(t, fnHandler)
 
@@ -409,6 +448,9 @@ func TestFormPost4(t *testing.T) {
 	handler, err := MakeHandlerFromMethod[Example]("FormPost4")
 	assert.NoError(t, err)
 	assert.NotNil(t, handler)
+	assert.Equal(t, false, handler.isAuth)
+	assert.Nil(t, handler.fieldIndexOfAuth)
+	assert.Equal(t, -1, handler.indexOfArgIsAuth)
 	fnHandler := handler.Handler()
 	assert.NotNil(t, fnHandler)
 
@@ -433,6 +475,9 @@ func TestFormPost5(t *testing.T) {
 	handler, err := MakeHandlerFromMethod[Example]("FormPost5")
 	assert.NoError(t, err)
 	assert.NotNil(t, handler)
+	assert.Equal(t, false, handler.isAuth)
+	assert.Nil(t, handler.fieldIndexOfAuth)
+	assert.Equal(t, -1, handler.indexOfArgIsAuth)
 	fnHandler := handler.Handler()
 	assert.NotNil(t, fnHandler)
 
@@ -460,6 +505,48 @@ func (ex *Example2) Post(h *Handler) {
 func TestExample2Post(t *testing.T) {
 	handler, err := MakeHandlerFromMethod[Example2]("Post")
 	assert.NoError(t, err)
+	assert.NotNil(t, handler)
+	assert.Equal(t, false, handler.isAuth)
+	assert.Nil(t, handler.fieldIndexOfAuth)
+	assert.Equal(t, -1, handler.indexOfArgIsAuth)
+	fnHandler := handler.Handler()
+	assert.NotNil(t, fnHandler)
+	req, err := Mock.JsonRequest("POST", handler.GetUriHandler(), nil)
+	assert.NoError(t, err)
+	res := Mock.NewRes()
+	fnHandler.ServeHTTP(res, req)
+}
+
+type OK[T any] struct {
+	V T
+}
+type AuthExample struct {
+	Handler
+	OAuth2[User]
+	FX *AuthExample
+}
+
+func (ex *AuthExample) New() error {
+	ex.Verify(func(ctx *httpContext) (*User, error) {
+		return &User{}, nil
+	})
+	return nil
+}
+func (ex *AuthExample) Post(ctx OK[Handler]) {
+	fmt.Println(ctx)
+
+}
+
+type User001 struct {
+}
+
+func TestAuthFind(t *testing.T) {
+
+	handler, err := MakeHandlerFromMethod[AuthExample]("Post")
+	assert.NoError(t, err)
+	assert.Equal(t, true, handler.isAuth)
+	assert.Equal(t, []int{1}, handler.fieldIndexOfAuth)
+	assert.Equal(t, 0, handler.indexOfArgIsAuth)
 	assert.NotNil(t, handler)
 	fnHandler := handler.Handler()
 	assert.NotNil(t, fnHandler)

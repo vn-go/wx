@@ -1,5 +1,3 @@
-
-
 package swaggers
 
 // Contact contains contact information for the exposed API.
