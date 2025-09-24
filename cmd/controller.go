@@ -9,6 +9,9 @@ import (
 type User struct {
 	Username string
 }
+
+/*
+ */
 type Media struct {
 	wx.Authenticate[User]
 }
@@ -16,10 +19,15 @@ type Media struct {
 func (m *Media) Upload(ctx *wx.Handler, file multipart.FileHeader) (string, error) {
 	return "heelo", nil
 }
+func (m *Media) Auth(ctx *wx.Handler, data wx.Form[struct {
+}]) (string, error) {
+	return "heelo", nil
+}
 func init() {
 	(&wx.Authenticate[User]{}).Verify(func(ctx wx.Handler) (*User, error) {
 
 		authHeader := ctx().Req.Header.Get("Authorization")
+
 		if authHeader == "" {
 			return nil, wx.NewUnauthorizedError()
 		}

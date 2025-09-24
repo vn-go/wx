@@ -80,7 +80,7 @@ func (h *handlerInfo) catchError(w http.ResponseWriter, err error) {
 //			return nil, fmt.Errorf("%s.Verify was not call, please call%s.Verify for setting up auth ", ret.typeOfFiedAuth.String(), ret.typeOfFiedAuth.String())
 //		}
 //	}
-func (h *handlerInfo) getAuth(valueOfHandler reflect.Value, w http.ResponseWriter, r *http.Request) (reflect.Value, error) {
+func (h *handlerInfo) getAuth(valueOfHandler reflect.Value) (reflect.Value, error) {
 	newMethodOfAuth, found := authUtils.GetNewMethod(h.typeOfFiedAuth)
 	if !found {
 		err := fmt.Errorf("%s.Verify was not call, please call%s.Verify for setting up auth ", h.typeOfFiedAuth.String(), h.typeOfFiedAuth.String())
@@ -183,7 +183,7 @@ func (info *handlerInfo) Invoke(w http.ResponseWriter, r *http.Request) ([]refle
 	var authValue reflect.Value
 	if info.isAuth {
 		var err error
-		authValue, err = info.getAuth(valueOfHandlerFunction, w, r)
+		authValue, err = info.getAuth(valueOfHandlerFunction)
 		if err != nil {
 			return nil, err
 		}
@@ -218,7 +218,10 @@ func (info *handlerInfo) Invoke(w http.ResponseWriter, r *http.Request) ([]refle
 	if info.indexOfArgIsAuth > -1 {
 		if args[info.indexOfArgIsAuth].Kind() == reflect.Ptr {
 			if len(info.fieldIndexOfAuth) > 0 {
-				args[info.indexOfArgIsAuth].Elem().FieldByIndex(info.fieldIndexOfAuth).Set(authValue)
+				if args[info.indexOfArgIsAuth].Elem().FieldByIndex(info.fieldIndexOfAuth).CanSet() {
+					args[info.indexOfArgIsAuth].Elem().FieldByIndex(info.fieldIndexOfAuth).Set(authValue)
+				}
+
 			} else {
 				args[info.indexOfArgIsAuth] = authValue
 			}
@@ -238,7 +241,11 @@ func (info *handlerInfo) Invoke(w http.ResponseWriter, r *http.Request) ([]refle
 		if err != nil {
 			return nil, err
 		}
-		args[info.indexOfArgIsRequestBody] = bodyValue
+		if info.method.Type.In(info.indexOfArgIsRequestBody).Kind() != reflect.Ptr {
+			args[info.indexOfArgIsRequestBody] = bodyValue.Elem()
+		} else {
+			args[info.indexOfArgIsRequestBody] = bodyValue
+		}
 
 	}
 	retRun := info.method.Func.Call(args)
@@ -381,7 +388,8 @@ func (info *handlerInfo) GetBodyValue(r *http.Request, contentType string) (refl
 
 		return reflect.Value{}, NewBadRequestError("request body is required")
 	}
-
+	data := bodyData.Elem().Interface()
+	fmt.Println(data)
 	return bodyData, nil
 }
 func (info *handlerInfo) getFieldByName(typ reflect.Type, fieldName string) *reflect.StructField {
