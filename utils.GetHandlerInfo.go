@@ -9,36 +9,9 @@ import (
 	"github.com/vn-go/wx/mock"
 )
 
-// func (u *utilsType) extractIndexFieldOfResAndReq(typ reflect.Type) ([]int, []int, error) {
-// 	if typ.AssignableTo(u.HttpContextType) || typ.AssignableTo(u.HttpContextPtrType) {
-// 		return u.IndexOfReqField, u.IndexOfResField, nil
-// 	}
-// 	// duyệt tất cả field của struct
-// 	for i := 0; i < typ.NumField(); i++ {
-// 		f := typ.Field(i)
-
-// 		// check embed HttpContext hoặc *HttpContext
-// 		if f.Anonymous && (f.Type.AssignableTo(u.HttpContextType) || f.Type.AssignableTo(u.HttpContextPtrType)) {
-// 			// lấy field Req và Res từ HttpContext
-// 			reqField, okReq := u.HttpContextType.FieldByName(u.ReqFieldName)
-// 			resField, okRes := u.HttpContextType.FieldByName(u.ResFieldName)
-
-// 			if okReq && okRes {
-// 				// ghép prefix index (nếu embed thì phải prepend index cha)
-// 				return append(f.Index, reqField.Index...), append(f.Index, resField.Index...), nil
-// 			}
-// 		}
-// 	}
-
-//		return nil, nil, nil
-//	}
 func (u *utilsType) findIndexOfFieldIsHandler(typ reflect.Type, visisted map[reflect.Type]bool) ([]int, bool) {
 	if _, ok := visisted[typ]; ok {
-		// msg := "recurisve"
-		// for k, _ := range visisted {
-		// 	msg += k.String() + "-->"
-		// }
-		// panic(msg)
+
 		return nil, false
 	}
 
@@ -109,8 +82,7 @@ func (u *utilsType) getHandlerInfo(method reflect.Method) (*handlerInfo, error) 
 				indexOfArgIsRequestBody: -1,
 				indexOfArgIsHandler:     i,
 				indexFieldIshandler:     indexFieldIshandler,
-				// resFieldIndex:           resIndex,
-				// reqFieldIndex:           reqIndex,
+
 				method: method,
 
 				controllerTypeElem: controllerTypeElem,
@@ -132,6 +104,9 @@ func (u *utilsType) getHandlerInfo(method reflect.Method) (*handlerInfo, error) 
 			}
 			ret.conrollerNewMethod = newMethod
 			if indexOfAgr, fieldIndex, found := internal.FindFirstArg(method, func(t reflect.Type) bool {
+				if t.Kind() == reflect.Ptr {
+					t = t.Elem()
+				}
 				return t.PkgPath() == authUtils.pkgPath && strings.HasPrefix(t.Name(), authUtils.prefix)
 			}); found {
 				ret.indexOfArgIsAuth = indexOfAgr

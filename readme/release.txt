@@ -13,3 +13,10 @@ git tag -a v0.1.12 -m "Add mockest-markdown guide"
 git push origin v0.1.12
 git push origin --tags
 #go get github.com/vn-go/wx@v0.1.12
+---
+git add .
+git commit -m "Add mockest-markdown guide"
+git tag -a v0.1.13 -m "Add mockest-markdown guide"
+git push origin v0.1.13
+git push origin --tags
+#go get github.com/vn-go/wx@v0.1.13

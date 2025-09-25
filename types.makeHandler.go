@@ -2,12 +2,10 @@ package wx
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"mime/multipart"
 	"net/http"
 	"reflect"
-	"runtime/debug"
 	"strings"
 
 	"github.com/vn-go/wx/internal"
@@ -88,12 +86,8 @@ func (h *handlerInfo) getAuth(valueOfHandler reflect.Value) (reflect.Value, erro
 		return reflect.Value{}, NewServerError("server error", err)
 	}
 	ret := reflect.New(h.typeOfFiedAuth)
-	var retRun []reflect.Value
-	if newMethodOfAuth.Type().In(0).Kind() == reflect.Ptr {
-		retRun = newMethodOfAuth.Call([]reflect.Value{valueOfHandler})
-	} else {
-		retRun = newMethodOfAuth.Call([]reflect.Value{valueOfHandler.Elem()})
-	}
+
+	retRun := newMethodOfAuth.Call([]reflect.Value{valueOfHandler})
 
 	last := retRun[len(retRun)-1]        // last return value
 	if last.IsValid() && !last.IsNil() { // safe checks
@@ -110,13 +104,13 @@ func (h *handlerInfo) getAuth(valueOfHandler reflect.Value) (reflect.Value, erro
 }
 func (h *handlerInfo) Handler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		defer func() {
-			if r := recover(); r != nil {
-				Options.onError(errors.New(string(debug.Stack())))
-				//fmt.Println(string(debug.Stack())) // giống exception trace trong C#
+		// defer func() {
+		// 	if r := recover(); r != nil {
+		// 		Options.onError(errors.New(string(debug.Stack())))
+		// 		//fmt.Println(string(debug.Stack())) // giống exception trace trong C#
 
-			}
-		}()
+		// 	}
+		// }()
 		if r.Method != h.httpMethod {
 			w.WriteHeader(http.StatusMethodNotAllowed)
 			return
