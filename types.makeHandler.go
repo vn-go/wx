@@ -369,8 +369,7 @@ func (info *handlerInfo) GetBodyValue(r *http.Request, contentType string) (refl
 
 		return reflect.Value{}, NewBadRequestError("request body is required")
 	}
-	data := bodyData.Elem().Interface()
-	fmt.Println(data)
+
 	return bodyData, nil
 }
 func (info *handlerInfo) getFieldByName(typ reflect.Type, fieldName string) *reflect.StructField {
