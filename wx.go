@@ -2,6 +2,7 @@ package wx
 
 import (
 	"fmt"
+	"log"
 	"reflect"
 	"strings"
 	"sync"
@@ -90,4 +91,19 @@ func GetUriOfHandler[T any](methodName string) (string, error) {
 	})
 	return init.val, init.err
 
+}
+
+type optionTypes struct {
+	IsDebug bool
+	onError func(err error)
+}
+
+func OnError(fn func(err error)) {
+	Options.onError = fn
+}
+
+var Options = &optionTypes{
+	onError: func(err error) {
+		log.Output(2, err.Error())
+	},
 }

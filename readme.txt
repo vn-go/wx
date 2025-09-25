@@ -55,3 +55,12 @@ git commit -m "support request with prt struct"
 git push origin main
 git tag v0.1.8
 git push origin v0.1.8
+#go get github.com/vn-go/wx@v0.1.8
+---
+---
+git add .
+git commit -m "trace error"
+git push origin main
+git tag v0.1.9
+git push origin v0.1.9
+#go get github.com/vn-go/wx@v0.1.9

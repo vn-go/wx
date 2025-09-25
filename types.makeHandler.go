@@ -2,12 +2,13 @@ package wx
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"mime/multipart"
 	"net/http"
 	"reflect"
+	"runtime/debug"
 	"strings"
-	"sync"
 
 	"github.com/vn-go/wx/internal"
 )
@@ -21,6 +22,7 @@ func toJSON(code, message string) []byte {
 	b, _ := json.Marshal(resp)
 	return b
 }
+
 func (h *handlerInfo) catchError(w http.ResponseWriter, err error) {
 	if err == nil {
 		return
@@ -62,8 +64,15 @@ func (h *handlerInfo) catchError(w http.ResponseWriter, err error) {
 
 	default:
 		// fallback for unexpected error
-		status = http.StatusInternalServerError
-		body = toJSON("server_error", err.Error())
+		if Options.IsDebug {
+			status = http.StatusInternalServerError
+			body = toJSON("server_error", err.Error())
+		} else {
+			status = http.StatusInternalServerError
+			body = toJSON("server_error", "internal server error")
+			Options.onError(err)
+		}
+
 	}
 
 	// Write response
@@ -72,14 +81,6 @@ func (h *handlerInfo) catchError(w http.ResponseWriter, err error) {
 	_, _ = w.Write(body)
 }
 
-// func (h *handlerInfo) getVerifyMethodOfAuth() {
-
-//		var found bool
-//		h.newMethodOfAuth, found = authUtils.GetNewMethod(h.typeOfFiedAuth)
-//		if !found {
-//			return nil, fmt.Errorf("%s.Verify was not call, please call%s.Verify for setting up auth ", ret.typeOfFiedAuth.String(), ret.typeOfFiedAuth.String())
-//		}
-//	}
 func (h *handlerInfo) getAuth(valueOfHandler reflect.Value) (reflect.Value, error) {
 	newMethodOfAuth, found := authUtils.GetNewMethod(h.typeOfFiedAuth)
 	if !found {
@@ -104,12 +105,17 @@ func (h *handlerInfo) getAuth(valueOfHandler reflect.Value) (reflect.Value, erro
 }
 func (h *handlerInfo) Handler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			if r := recover(); r != nil {
+				Options.onError(errors.New(string(debug.Stack())))
+				//fmt.Println(string(debug.Stack())) // giống exception trace trong C#
 
+			}
+		}()
 		if r.Method != h.httpMethod {
 			w.WriteHeader(http.StatusMethodNotAllowed)
 			return
 		}
-		//contentType := r.Header.Get("Content-Type")
 
 		ret, err := h.Invoke(w, r)
 		if err != nil {
@@ -127,10 +133,8 @@ func (h *handlerInfo) Handler() http.HandlerFunc {
 
 				}
 				w.Header().Set("Content-Type", "application/json")
-				//write ret to
 				if err := json.NewEncoder(w).Encode(retData); err != nil {
 					h.catchError(w, NewServerError("Internal server error", err))
-					//http.Error(w, fmt.Sprintf("Error encoding JSON: %s", err), http.StatusInternalServerError)
 				}
 			} else {
 				w.Header().Set("Content-Type", "application/json")
@@ -205,10 +209,8 @@ func (info *handlerInfo) Invoke(w http.ResponseWriter, r *http.Request) ([]refle
 			handler := info.createHandler(w, r)
 			fiedlOfhttpContextInController.Set(reflect.ValueOf(&handler))
 		} else {
-			//"reflect: Call using *wx.OK[github.com/vn-go/wx.Handler] as type wx.OK[github.com/vn-go/wx.Handler]"
 			handler := info.createHandler(w, r)
 			fiedlOfhttpContextInController.Set(reflect.ValueOf(handler))
-			//fiedlOfhttpContextInController = fiedlOfhttpContextInController.Addr()
 		}
 	}
 
@@ -261,23 +263,6 @@ func (info *handlerInfo) Invoke(w http.ResponseWriter, r *http.Request) ([]refle
 	return retRun[0 : len(retRun)-1], nil
 }
 
-type initCreateControllerOnce struct {
-	controller *reflect.Value
-	err        error
-	once       sync.Once
-}
-
-var cacheCreateControllerOnce sync.Map
-
-// func (info *handlerInfo) CreateControllerOnce() (*reflect.Value, error) {
-// 	actally, _ := cacheCreateControllerOnce.LoadOrStore(info.controllerTypeElem, &initCreateControllerOnce{})
-// 	item := actally.(*initCreateControllerOnce)
-// 	item.once.Do(func() {
-// 		item.controller, item.err = info.CreateController()
-// 	})
-// 	return item.controller, item.err
-
-// }
 func (info *handlerInfo) CreateController(valueOfHandlerFunction reflect.Value) (*reflect.Value, error) {
 	controllerValue := reflect.New(info.controllerType.Elem())
 	if info.conrollerNewMethod != nil {
@@ -343,18 +328,9 @@ func (info *handlerInfo) CreateHandlerValue(r *http.Request, w http.ResponseWrit
 	}
 
 	return retValOfHandler, retValOfHandlerFn
-	// httpContextValue := reflect.New(info.typeOfArgIshttpContextElem)
-	// httpContextValue.Elem().FieldByIndex(info.reqFieldIndex).Set(reqValue)
-	// httpContextValue.Elem().FieldByIndex(info.resFieldIndex).Set(resValue)
-	// return &httpContextValue, nil
+
 }
-func (info *handlerInfo) CreatehttpContextDelete(reqValue, resValue reflect.Value) (*reflect.Value, error) {
-	// httpContextValue := reflect.New(info.typeOfArgIshttpContextElem)
-	// httpContextValue.Elem().FieldByIndex(info.reqFieldIndex).Set(reqValue)
-	// httpContextValue.Elem().FieldByIndex(info.resFieldIndex).Set(resValue)
-	// return &httpContextValue, nil
-	panic("depreciate")
-}
+
 func (info *handlerInfo) GetBodyValue(r *http.Request, contentType string) (reflect.Value, error) {
 	//"multipart/form-data; boundary=bc93ed97d895d9ff5f8eb8f994205bc3f8184e4f5d0668de8791448fe447"
 
@@ -618,8 +594,7 @@ func (info *handlerInfo) getMultipartFormDataValueByType(bodyType reflect.Type, 
 	}
 	var formData map[string][]string
 	var files map[string][]*multipart.FileHeader
-	//fieldsIsFile := reflect.StructField{}
-	//contentType := r.Header.Get("Content-Type")
+
 	if err := r.ParseMultipartForm(info.getMaxMemory()); err != nil {
 		return reflect.Value{}, NewFileParseError("error parsing multipart form", err)
 	}
@@ -719,14 +694,9 @@ func (info *handlerInfo) applyUri(contextValue reflect.Value, r *http.Request) e
 			fieldIndex := info.uriParams[i-1].FieldIndex
 			fieldSet := contextValue.Elem().FieldByIndex(fieldIndex)
 			fieldSet.Set(reflect.ValueOf(placeHolders[0][i]))
-			//field := contextValue.Type().Elem().FieldByIndex(fieldIndex)
 
 		}
 		if info.isQueryUri {
-			// url, err := r.URL.Parse(r.URL.Path)
-			// if err != nil {
-			// 	return NewServerError("can not read url", err)
-			// }
 
 			query := r.URL.Query()
 
