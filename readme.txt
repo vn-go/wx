@@ -64,3 +64,10 @@ git push origin main
 git tag v0.1.9
 git push origin v0.1.9
 #go get github.com/vn-go/wx@v0.1.9
+---
+git add .
+git commit -m "trace error"
+git push origin main
+git tag v0.1.10
+git push origin v0.1.10
+#go get github.com/vn-go/wx@v0.1.10

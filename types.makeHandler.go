@@ -88,8 +88,13 @@ func (h *handlerInfo) getAuth(valueOfHandler reflect.Value) (reflect.Value, erro
 		return reflect.Value{}, NewServerError("server error", err)
 	}
 	ret := reflect.New(h.typeOfFiedAuth)
+	var retRun []reflect.Value
+	if newMethodOfAuth.Type().In(0).Kind() == reflect.Ptr {
+		retRun = newMethodOfAuth.Call([]reflect.Value{valueOfHandler})
+	} else {
+		retRun = newMethodOfAuth.Call([]reflect.Value{valueOfHandler.Elem()})
+	}
 
-	retRun := newMethodOfAuth.Call([]reflect.Value{valueOfHandler})
 	last := retRun[len(retRun)-1]        // last return value
 	if last.IsValid() && !last.IsNil() { // safe checks
 		if err, ok := last.Interface().(error); ok {
