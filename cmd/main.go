@@ -6,11 +6,12 @@ import (
 
 type Oauth struct {
 }
-
-func (auth *Oauth) Login(ctx wx.Handler, body wx.Form[struct {
+type LoginForm struct {
 	Username string
 	Password string
-}]) (any, error) {
+}
+
+func (auth *Oauth) Login(ctx wx.Handler, body wx.Form[LoginForm]) (any, error) {
 	if body.Data.Username == "admin" && body.Data.Password == "admin" {
 		return &struct {
 			AccessToken string `json:"access_token"`
@@ -23,6 +24,7 @@ func (auth *Oauth) Login(ctx wx.Handler, body wx.Form[struct {
 	return nil, wx.NewUnauthorizedError()
 }
 func main() {
+	wx.Options.UsePool = true
 	if err := wx.Routes("/api", &Media{}, &Oauth{}); err != nil {
 		panic(err)
 	}

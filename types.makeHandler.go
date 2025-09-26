@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"reflect"
 	"strings"
+	"sync"
 
 	"github.com/vn-go/wx/internal"
 )
@@ -178,7 +179,16 @@ func (info *handlerInfo) Invoke(w http.ResponseWriter, r *http.Request) ([]refle
 
 	contentType := r.Header.Get("Content-Type")
 	valueOfArgsIsHandler, valueOfHandlerFunction := info.CreateHandlerValue(r, w)
-	controller, err := info.CreateController(valueOfHandlerFunction)
+	var controller reflect.Value
+	if Options.UsePool {
+		controller = poolValues.Get(info.controllerTypeElem)
+		defer poolValues.Put(controller)
+	} else {
+		controller = reflect.New(info.controllerTypeElem)
+	}
+
+	controller, err := info.CreateController(controller, valueOfHandlerFunction)
+
 	if err != nil {
 		// http.Error(w, err.Error(), http.StatusInternalServerError)
 		return nil, err
@@ -191,11 +201,9 @@ func (info *handlerInfo) Invoke(w http.ResponseWriter, r *http.Request) ([]refle
 			return nil, err
 		}
 	}
-	// valueOfReq := reflect.ValueOf(r)
-	// valueOfRes := reflect.ValueOf(w)
 
 	if err != nil {
-		// http.Error(w, err.Error(), http.StatusInternalServerError)
+
 		return nil, err
 	}
 	err = info.applyUri(valueOfArgsIsHandler, r)
@@ -214,7 +222,7 @@ func (info *handlerInfo) Invoke(w http.ResponseWriter, r *http.Request) ([]refle
 	}
 
 	args := make([]reflect.Value, info.method.Type.NumIn())
-	args[0] = *controller
+	args[0] = controller
 	args[info.indexOfArgIsHandler] = valueOfArgsIsHandler
 	if info.indexOfArgIsAuth > -1 {
 		if args[info.indexOfArgIsAuth].Kind() == reflect.Ptr {
@@ -238,14 +246,22 @@ func (info *handlerInfo) Invoke(w http.ResponseWriter, r *http.Request) ([]refle
 	}
 
 	if info.indexOfArgIsRequestBody != -1 {
-		bodyValue, err := info.GetBodyValue(r, contentType)
+		var bodyValue reflect.Value
+		if Options.UsePool {
+			bodyValue = poolValues.Get(info.typeOfRequestBody)
+			defer poolValues.Put(bodyValue)
+		} else {
+			bodyValue = reflect.New(info.typeOfRequestBody)
+		}
+		bodyValue, err := info.GetBodyValue(bodyValue, r, contentType)
 		if err != nil {
 			return nil, err
 		}
-		if info.method.Type.In(info.indexOfArgIsRequestBody).Kind() != reflect.Ptr {
-			args[info.indexOfArgIsRequestBody] = bodyValue.Elem()
-		} else {
+		if info.method.Type.In(info.indexOfArgIsRequestBody).Kind() == reflect.Ptr {
 			args[info.indexOfArgIsRequestBody] = bodyValue
+		} else {
+			args[info.indexOfArgIsRequestBody] = bodyValue.Elem()
+
 		}
 
 	}
@@ -256,14 +272,15 @@ func (info *handlerInfo) Invoke(w http.ResponseWriter, r *http.Request) ([]refle
 	last := retRun[len(retRun)-1]        // last return value
 	if last.IsValid() && !last.IsNil() { // safe checks
 		if err, ok := last.Interface().(error); ok {
+
 			return nil, err
 		}
 	}
 	return retRun[0 : len(retRun)-1], nil
 }
 
-func (info *handlerInfo) CreateController(valueOfHandlerFunction reflect.Value) (*reflect.Value, error) {
-	controllerValue := reflect.New(info.controllerType.Elem())
+func (info *handlerInfo) CreateController(controllerValue, valueOfHandlerFunction reflect.Value) (reflect.Value, error) {
+
 	if info.conrollerNewMethod != nil {
 		if info.indexFieldIsHandlerInController != nil {
 			controllerValue.Elem().FieldByIndex(info.indexFieldIsHandlerInController).Set(valueOfHandlerFunction)
@@ -272,12 +289,12 @@ func (info *handlerInfo) CreateController(valueOfHandlerFunction reflect.Value) 
 		ret := info.conrollerNewMethod.Func.Call([]reflect.Value{controllerValue})
 		if !ret[0].IsZero() {
 			if ret[0].Elem().Interface() != nil {
-				return nil, ret[0].Elem().Interface().(error)
+				return reflect.Value{}, ret[0].Elem().Interface().(error)
 			}
 		}
-		return &controllerValue, nil
+		return controllerValue, nil
 	}
-	return &controllerValue, nil
+	return controllerValue, nil
 
 }
 func (info *handlerInfo) CreateHandlerValue(r *http.Request, w http.ResponseWriter) (reflect.Value, reflect.Value) {
@@ -330,14 +347,14 @@ func (info *handlerInfo) CreateHandlerValue(r *http.Request, w http.ResponseWrit
 
 }
 
-func (info *handlerInfo) GetBodyValue(r *http.Request, contentType string) (reflect.Value, error) {
+func (info *handlerInfo) GetBodyValue(bodyData reflect.Value, r *http.Request, contentType string) (reflect.Value, error) {
 	//"multipart/form-data; boundary=bc93ed97d895d9ff5f8eb8f994205bc3f8184e4f5d0668de8791448fe447"
 
 	if strings.HasPrefix(contentType, "multipart/form-data; ") {
-		return info.GetMultipartFormDataValue(r)
+		return info.GetMultipartFormDataValue(bodyData, r)
 	}
 	if contentType == "application/x-www-form-urlencoded" {
-		return info.GetXWwwFormUrlencoded(r)
+		return info.GetXWwwFormUrlencoded(bodyData, r)
 	}
 	if contentType == "application/json" && info.isFormPost {
 		/*
@@ -352,7 +369,6 @@ func (info *handlerInfo) GetBodyValue(r *http.Request, contentType string) (refl
 		)
 	}
 
-	bodyData := reflect.New(info.typeOfRequestBodyElem)
 	if r.Body != nil && r.Body != http.NoBody {
 		defer r.Body.Close() // <-- auto close after read body of request
 		if err := json.NewDecoder(r.Body).Decode(bodyData.Interface()); err != nil {
@@ -391,9 +407,18 @@ func (info *handlerInfo) getFieldByName(typ reflect.Type, fieldName string) *ref
 func (info *handlerInfo) getMaxMemory() int64 {
 	return 20 << 20
 }
-func (info *handlerInfo) GetMultipartFormDataValue(r *http.Request) (reflect.Value, error) {
+
+type onFinishRequest func(r *http.Request)
+type initAddOnFinishRequest struct {
+	once sync.Once
+}
+
+func (info *handlerInfo) AddOnFinishRequest(key string, fn onFinishRequest) {
+
+}
+
+func (info *handlerInfo) GetMultipartFormDataValue(ret reflect.Value, r *http.Request) (reflect.Value, error) {
 	if isFormType(info.typeOfRequestBodyElem) {
-		ret := reflect.New(info.typeOfRequestBodyElem)
 		if fieldData, ok := info.typeOfRequestBodyElem.FieldByName("Data"); ok {
 			dataVal, err := info.getMultipartFormDataValueByType(fieldData.Type, r)
 			if err != nil {
@@ -410,9 +435,9 @@ func (info *handlerInfo) GetMultipartFormDataValue(r *http.Request) (reflect.Val
 
 			}
 
-			if info.typeOfRequestBody.Kind() == reflect.Struct {
-				return ret.Elem(), nil
-			}
+			// if info.typeOfRequestBody.Kind() == reflect.Struct {
+			// 	return ret.Elem(), nil
+			// }
 			return ret, nil
 		} else {
 			return reflect.Value{}, NewServerError("Internal server error", fmt.Errorf("%s do not have Data Field", info.typeOfRequestBodyElem.String()))
@@ -480,9 +505,8 @@ func (info *handlerInfo) getXWwwFormUrlencoded(bodyType reflect.Type, r *http.Re
 
 	return ret, nil
 }
-func (info *handlerInfo) GetXWwwFormUrlencoded(r *http.Request) (reflect.Value, error) {
+func (info *handlerInfo) GetXWwwFormUrlencoded(ret reflect.Value, r *http.Request) (reflect.Value, error) {
 	if isFormType(info.typeOfRequestBodyElem) {
-		ret := reflect.New(info.typeOfRequestBodyElem)
 		if fieldData, ok := info.typeOfRequestBodyElem.FieldByName("Data"); ok {
 			dataVal, err := info.getXWwwFormUrlencoded(fieldData.Type, r)
 			if err != nil {
@@ -499,9 +523,9 @@ func (info *handlerInfo) GetXWwwFormUrlencoded(r *http.Request) (reflect.Value, 
 
 			}
 
-			if info.typeOfRequestBody.Kind() == reflect.Struct {
-				return ret.Elem(), nil
-			}
+			// if info.typeOfRequestBody.Kind() == reflect.Struct {
+			// 	return ret, nil
+			// }
 			return ret, nil
 		} else {
 			return reflect.Value{}, NewServerError("Internal server error", fmt.Errorf("%s do not have Data Field", info.typeOfRequestBodyElem.String()))
@@ -655,9 +679,9 @@ func (info *handlerInfo) getMultipartFormDataValueByType(bodyType reflect.Type, 
 			fv.Set(reflect.ValueOf(slice))
 		}
 	}
-	if bodyType.Kind() == reflect.Struct {
-		return ret.Elem(), nil
-	}
+	// if bodyType.Kind() == reflect.Struct {
+	// 	return ret.Elem(), nil
+	// }
 
 	return ret, nil
 }

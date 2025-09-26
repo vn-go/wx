@@ -41,12 +41,20 @@ type initGetHandlerInfo struct {
 
 var cacheGetHandlerInfo sync.Map
 
+type getHandlerInfoKey struct {
+	typ    reflect.Type
+	method reflect.Method
+}
+
 func (u *utilsType) GetHandlerInfo(method reflect.Method) (*handlerInfo, error) {
 	typ := method.Type.In(0)
 	if typ.Kind() == reflect.Ptr {
 		typ = typ.Elem()
 	}
-	key := typ.String() + "://" + method.Name
+	key := getHandlerInfoKey{
+		typ:    typ,
+		method: method,
+	}
 	actully, _ := cacheGetHandlerInfo.LoadOrStore(key, &initGetHandlerInfo{})
 	item := actully.(*initGetHandlerInfo)
 	item.once.Do(func() {

@@ -85,4 +85,5 @@ type handlerInfo struct {
 	typeOfFiedAuth   reflect.Type
 	isAuth           bool
 	// newMethodOfAuth  reflect.Value
+
 }

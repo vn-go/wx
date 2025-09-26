@@ -96,6 +96,7 @@ func GetUriOfHandler[T any](methodName string) (string, error) {
 type optionTypes struct {
 	IsDebug bool
 	onError func(err error)
+	UsePool bool
 }
 
 func OnError(fn func(err error)) {
