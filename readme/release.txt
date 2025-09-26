@@ -27,3 +27,10 @@ git tag -a v0.1.14 -m "support sync.pool"
 git push origin v0.1.14
 git push origin --tags
 #go get github.com/vn-go/wx@v0.1.14
+---
+git add .
+git commit -m "support sync.pool"
+git tag -a v0.1.15 -m "support sync.pool"
+git push origin v0.1.15
+git push origin --tags
+#go get github.com/vn-go/wx@v0.1.15

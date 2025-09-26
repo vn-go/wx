@@ -248,10 +248,10 @@ func (info *handlerInfo) Invoke(w http.ResponseWriter, r *http.Request) ([]refle
 	if info.indexOfArgIsRequestBody != -1 {
 		var bodyValue reflect.Value
 		if Options.UsePool {
-			bodyValue = poolValues.Get(info.typeOfRequestBody)
+			bodyValue = poolValues.Get(info.typeOfRequestBodyElem)
 			defer poolValues.Put(bodyValue)
 		} else {
-			bodyValue = reflect.New(info.typeOfRequestBody)
+			bodyValue = reflect.New(info.typeOfRequestBodyElem)
 		}
 		bodyValue, err := info.GetBodyValue(bodyValue, r, contentType)
 		if err != nil {
@@ -413,17 +413,25 @@ type initAddOnFinishRequest struct {
 	once sync.Once
 }
 
-func (info *handlerInfo) AddOnFinishRequest(key string, fn onFinishRequest) {
+// func (info *handlerInfo) AddOnFinishRequest(key string, fn onFinishRequest) {
 
-}
+// }
 
 func (info *handlerInfo) GetMultipartFormDataValue(ret reflect.Value, r *http.Request) (reflect.Value, error) {
+	// ret := formDataValue
+	// if ret.Kind() == reflect.Ptr {
+	// 	ret = ret.Elem()
+	// }
+	// if ret.Kind() == reflect.Ptr {
+	// 	ret = ret.Elem()
+	// }
 	if isFormType(info.typeOfRequestBodyElem) {
 		if fieldData, ok := info.typeOfRequestBodyElem.FieldByName("Data"); ok {
 			dataVal, err := info.getMultipartFormDataValueByType(fieldData.Type, r)
 			if err != nil {
 				return reflect.Value{}, NewServerError("Internal server error", err)
 			}
+
 			fieldSet := ret.Elem().FieldByIndex(fieldData.Index)
 			if fieldSet.CanConvert(dataVal.Type()) {
 				fieldSet.Set(dataVal)
@@ -505,14 +513,18 @@ func (info *handlerInfo) getXWwwFormUrlencoded(bodyType reflect.Type, r *http.Re
 
 	return ret, nil
 }
-func (info *handlerInfo) GetXWwwFormUrlencoded(ret reflect.Value, r *http.Request) (reflect.Value, error) {
+func (info *handlerInfo) GetXWwwFormUrlencoded(formValue reflect.Value, r *http.Request) (reflect.Value, error) {
+	ret := formValue
+	if ret.Kind() == reflect.Ptr {
+		ret = ret.Elem()
+	}
 	if isFormType(info.typeOfRequestBodyElem) {
 		if fieldData, ok := info.typeOfRequestBodyElem.FieldByName("Data"); ok {
 			dataVal, err := info.getXWwwFormUrlencoded(fieldData.Type, r)
 			if err != nil {
 				return reflect.Value{}, NewServerError("Internal server error", err)
 			}
-			fieldSet := ret.Elem().FieldByIndex(fieldData.Index)
+			fieldSet := ret.FieldByIndex(fieldData.Index)
 			if fieldSet.CanConvert(dataVal.Type()) {
 				fieldSet.Set(dataVal)
 			} else if dataVal.Kind() == reflect.Ptr {
@@ -526,7 +538,7 @@ func (info *handlerInfo) GetXWwwFormUrlencoded(ret reflect.Value, r *http.Reques
 			// if info.typeOfRequestBody.Kind() == reflect.Struct {
 			// 	return ret, nil
 			// }
-			return ret, nil
+			return formValue, nil
 		} else {
 			return reflect.Value{}, NewServerError("Internal server error", fmt.Errorf("%s do not have Data Field", info.typeOfRequestBodyElem.String()))
 		}
