@@ -89,6 +89,9 @@ func ValToString(val interface{}) string {
 }
 
 func findFirstField(typ reflect.Type, match func(t reflect.Type) bool, visited map[string]bool) ([]int, bool) {
+	if typ.Kind() == reflect.Ptr {
+		typ = typ.Elem()
+	}
 	if _, ok := visited[typ.String()]; ok {
 		return nil, false
 	}
@@ -103,6 +106,7 @@ func findFirstField(typ reflect.Type, match func(t reflect.Type) bool, visited m
 		return nil, false
 	}
 	for i := 0; i < typ.NumField(); i++ {
+
 		if indexes, found := findFirstField(typ.Field(i).Type, match, visited); found {
 			return append(typ.Field(i).Index, indexes...), true
 		}

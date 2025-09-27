@@ -34,3 +34,10 @@ git tag -a v0.1.15 -m "support sync.pool"
 git push origin v0.1.15
 git push origin --tags
 #go get github.com/vn-go/wx@v0.1.15
+---
+git add .
+git commit -m "support embeded controller"
+git tag -a v0.1.16 -m "support embeded controller"
+git push origin v0.1.16
+git push origin --tags
+#go get github.com/vn-go/wx@v0.1.16

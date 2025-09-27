@@ -202,10 +202,6 @@ func (info *handlerInfo) Invoke(w http.ResponseWriter, r *http.Request) ([]refle
 		}
 	}
 
-	if err != nil {
-
-		return nil, err
-	}
 	err = info.applyUri(valueOfArgsIsHandler, r)
 	if err != nil {
 		return nil, err
@@ -276,6 +272,9 @@ func (info *handlerInfo) Invoke(w http.ResponseWriter, r *http.Request) ([]refle
 			return nil, err
 		}
 	}
+	if len(retRun) == 1 {
+		return retRun, nil
+	}
 	return retRun[0 : len(retRun)-1], nil
 }
 
@@ -300,12 +299,6 @@ func (info *handlerInfo) CreateController(controllerValue, valueOfHandlerFunctio
 func (info *handlerInfo) CreateHandlerValue(r *http.Request, w http.ResponseWriter) (reflect.Value, reflect.Value) {
 	if utils.controllers.isHandler(info.typeOfArgIsIsHandlerElem) {
 		if info.typeOfArgIsIsHandler.Kind() == reflect.Ptr {
-			// type Hnx func ()
-			// var h Hnx = func() {
-			// 	fmt.Println("Hello Hnx")
-			// }
-
-			// var fx *Hnx = &h // fx là *Hnx
 
 			var retVale Handler = func() *httpContext {
 				return &httpContext{
