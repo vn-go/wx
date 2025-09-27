@@ -29,7 +29,7 @@ func init() {
 		authHeader := ctx().Req.Header.Get("Authorization")
 
 		if authHeader == "" {
-			return nil, wx.NewUnauthorizedError()
+			return nil, wx.Errors.NewUnauthorizedError()
 		}
 
 		return &User{}, nil

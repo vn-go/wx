@@ -21,7 +21,7 @@ func (auth *Oauth) Login(ctx wx.Handler, body wx.Form[LoginForm]) (any, error) {
 			TokenType:   "bearer",
 		}, nil
 	}
-	return nil, wx.NewUnauthorizedError()
+	return nil, wx.Errors.NewUnauthorizedError()
 }
 func main() {
 	wx.Options.UsePool = true

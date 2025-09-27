@@ -23,6 +23,7 @@ func toJSON(code, message string) []byte {
 }
 
 func (h *handlerInfo) catchError(w http.ResponseWriter, err error) {
+
 	if err == nil {
 		return
 	}
@@ -60,7 +61,12 @@ func (h *handlerInfo) catchError(w http.ResponseWriter, err error) {
 	case *UnauthorizedError:
 		status = http.StatusUnauthorized // 500
 		body = toJSON("Unauthorized", e.Error())
-
+	case *HttpError:
+		status = int(e.Code) // 500
+		body = []byte(e.Error())
+	case *ForbiddenError:
+		status = http.StatusForbidden
+		body = []byte(e.Error())
 	default:
 		// fallback for unexpected error
 		if Options.IsDebug {
@@ -84,7 +90,7 @@ func (h *handlerInfo) getAuth(valueOfHandler reflect.Value) (reflect.Value, erro
 	newMethodOfAuth, found := authUtils.GetNewMethod(h.typeOfFiedAuth)
 	if !found {
 		err := fmt.Errorf("%s.Verify was not call, please call%s.Verify for setting up auth ", h.typeOfFiedAuth.String(), h.typeOfFiedAuth.String())
-		return reflect.Value{}, NewServerError("server error", err)
+		return reflect.Value{}, Errors.NewServerError("server error", err)
 	}
 	ret := reflect.New(h.typeOfFiedAuth)
 
@@ -134,7 +140,7 @@ func (h *handlerInfo) Handler() http.HandlerFunc {
 				}
 				w.Header().Set("Content-Type", "application/json")
 				if err := json.NewEncoder(w).Encode(retData); err != nil {
-					h.catchError(w, NewServerError("Internal server error", err))
+					h.catchError(w, Errors.NewServerError("Internal server error", err))
 				}
 			} else {
 				w.Header().Set("Content-Type", "application/json")
@@ -145,11 +151,11 @@ func (h *handlerInfo) Handler() http.HandlerFunc {
 				}
 				if ret[0].IsValid() {
 					if err := json.NewEncoder(w).Encode(ret[0].Interface()); err != nil {
-						h.catchError(w, NewServerError("Internal server error", err))
+						h.catchError(w, Errors.NewServerError("Internal server error", err))
 					}
 				} else {
 					if err := json.NewEncoder(w).Encode(nil); err != nil {
-						h.catchError(w, NewServerError("Internal server error", err))
+						h.catchError(w, Errors.NewServerError("Internal server error", err))
 					}
 				}
 
@@ -356,7 +362,7 @@ func (info *handlerInfo) GetBodyValue(bodyData reflect.Value, r *http.Request, c
 			  "message": "Content-Type application/json is not supported. Please use multipart/form-data."
 			}
 		*/
-		return reflect.Value{}, NewUnacceptableContentError(
+		return reflect.Value{}, Errors.newUnacceptableContentError(
 			"unsupported_media_type",
 			"Content-Type application/json is not supported. Please use multipart/form-data.",
 		)
@@ -370,7 +376,7 @@ func (info *handlerInfo) GetBodyValue(bodyData reflect.Value, r *http.Request, c
 		}
 	} else if info.typeOfRequestBody.Kind() == reflect.Struct {
 
-		return reflect.Value{}, NewBadRequestError("request body is required")
+		return reflect.Value{}, Errors.newBadRequestError("request body is required")
 	}
 
 	return bodyData, nil
@@ -422,7 +428,7 @@ func (info *handlerInfo) GetMultipartFormDataValue(ret reflect.Value, r *http.Re
 		if fieldData, ok := info.typeOfRequestBodyElem.FieldByName("Data"); ok {
 			dataVal, err := info.getMultipartFormDataValueByType(fieldData.Type, r)
 			if err != nil {
-				return reflect.Value{}, NewServerError("Internal server error", err)
+				return reflect.Value{}, Errors.NewServerError("Internal server error", err)
 			}
 
 			fieldSet := ret.Elem().FieldByIndex(fieldData.Index)
@@ -441,7 +447,7 @@ func (info *handlerInfo) GetMultipartFormDataValue(ret reflect.Value, r *http.Re
 			// }
 			return ret, nil
 		} else {
-			return reflect.Value{}, NewServerError("Internal server error", fmt.Errorf("%s do not have Data Field", info.typeOfRequestBodyElem.String()))
+			return reflect.Value{}, Errors.NewServerError("Internal server error", fmt.Errorf("%s do not have Data Field", info.typeOfRequestBodyElem.String()))
 		}
 
 	} else {
@@ -462,7 +468,7 @@ func (info *handlerInfo) getXWwwFormUrlencoded(bodyType reflect.Type, r *http.Re
 	}
 	err := r.ParseForm()
 	if err != nil {
-		return reflect.Value{}, NewBodyParseError("can not read data", err)
+		return reflect.Value{}, Errors.newBodyParseError("can not read data", err)
 	}
 	for key, values := range r.Form {
 		field := info.getFieldByName(targetType, key)
@@ -515,7 +521,7 @@ func (info *handlerInfo) GetXWwwFormUrlencoded(formValue reflect.Value, r *http.
 		if fieldData, ok := info.typeOfRequestBodyElem.FieldByName("Data"); ok {
 			dataVal, err := info.getXWwwFormUrlencoded(fieldData.Type, r)
 			if err != nil {
-				return reflect.Value{}, NewServerError("Internal server error", err)
+				return reflect.Value{}, Errors.NewServerError("Internal server error", err)
 			}
 			fieldSet := ret.FieldByIndex(fieldData.Index)
 			if fieldSet.CanConvert(dataVal.Type()) {
@@ -533,7 +539,7 @@ func (info *handlerInfo) GetXWwwFormUrlencoded(formValue reflect.Value, r *http.
 			// }
 			return formValue, nil
 		} else {
-			return reflect.Value{}, NewServerError("Internal server error", fmt.Errorf("%s do not have Data Field", info.typeOfRequestBodyElem.String()))
+			return reflect.Value{}, Errors.NewServerError("Internal server error", fmt.Errorf("%s do not have Data Field", info.typeOfRequestBodyElem.String()))
 		}
 
 	} else {
@@ -555,7 +561,7 @@ func (info *handlerInfo) getMultipartFormDataValueByType(bodyType reflect.Type, 
 
 	if bodyType == reflect.TypeFor[multipart.FileHeader]() {
 		if err := r.ParseMultipartForm(info.getMaxMemory()); err != nil {
-			return reflect.Value{}, NewFileParseError("error parsing multipart form", err)
+			return reflect.Value{}, Errors.newFileParseError("error parsing multipart form", err)
 		}
 		for _, v := range r.MultipartForm.File {
 			if len(v) > 0 {
@@ -563,12 +569,12 @@ func (info *handlerInfo) getMultipartFormDataValueByType(bodyType reflect.Type, 
 			}
 
 		}
-		return reflect.Value{}, NewRequireError([]string{}, "file upload is missing")
+		return reflect.Value{}, Errors.NewRequireError([]string{}, "file upload is missing")
 	}
 	// 2- none-require file upload
 	if bodyType == reflect.TypeFor[*multipart.FileHeader]() {
 		if err := r.ParseMultipartForm(info.getMaxMemory()); err != nil {
-			return reflect.Value{}, NewFileParseError("error parsing multipart form", err)
+			return reflect.Value{}, Errors.newFileParseError("error parsing multipart form", err)
 		}
 		for _, v := range r.MultipartForm.File {
 			if len(v) > 0 {
@@ -581,7 +587,7 @@ func (info *handlerInfo) getMultipartFormDataValueByType(bodyType reflect.Type, 
 	// 3- multifile upload
 	if bodyType == reflect.TypeFor[[]multipart.FileHeader]() {
 		if err := r.ParseMultipartForm(info.getMaxMemory()); err != nil {
-			return reflect.Value{}, NewFileParseError("error parsing multipart form", err)
+			return reflect.Value{}, Errors.newFileParseError("error parsing multipart form", err)
 		}
 		for _, v := range r.MultipartForm.File {
 			retFiles := []multipart.FileHeader{}
@@ -597,7 +603,7 @@ func (info *handlerInfo) getMultipartFormDataValueByType(bodyType reflect.Type, 
 	// 4- multifile upload with nullable of element
 	if bodyType == reflect.TypeFor[[]*multipart.FileHeader]() {
 		if err := r.ParseMultipartForm(info.getMaxMemory()); err != nil {
-			return reflect.Value{}, NewFileParseError("error parsing multipart form", err)
+			return reflect.Value{}, Errors.newFileParseError("error parsing multipart form", err)
 		}
 		for _, v := range r.MultipartForm.File {
 
@@ -609,7 +615,7 @@ func (info *handlerInfo) getMultipartFormDataValueByType(bodyType reflect.Type, 
 	// 5- multifile upload with nullable of element and nullable of array
 	if bodyType == reflect.TypeFor[*[]*multipart.FileHeader]() {
 		if err := r.ParseMultipartForm(info.getMaxMemory()); err != nil {
-			return reflect.Value{}, NewFileParseError("error parsing multipart form", err)
+			return reflect.Value{}, Errors.newFileParseError("error parsing multipart form", err)
 		}
 		for _, v := range r.MultipartForm.File {
 			retFiles := []*multipart.FileHeader{}
@@ -623,7 +629,7 @@ func (info *handlerInfo) getMultipartFormDataValueByType(bodyType reflect.Type, 
 	var files map[string][]*multipart.FileHeader
 
 	if err := r.ParseMultipartForm(info.getMaxMemory()); err != nil {
-		return reflect.Value{}, NewFileParseError("error parsing multipart form", err)
+		return reflect.Value{}, Errors.newFileParseError("error parsing multipart form", err)
 	}
 	formData = r.MultipartForm.Value
 	files = r.MultipartForm.File //<-- wx tu dong lay file theo kieu nay
@@ -715,7 +721,7 @@ func (info *handlerInfo) applyUri(contextValue reflect.Value, r *http.Request) e
 		placeHolders := info.regexUriFind.FindAllStringSubmatch(r.URL.Path, -1)
 		if len(placeHolders) == 0 {
 
-			return NewRegexUriNotMatchError("regex uri not match")
+			return Errors.newRegexUriNotMatchError("regex uri not match")
 		}
 		for i := 1; i < len(placeHolders[0]); i++ {
 			fieldIndex := info.uriParams[i-1].FieldIndex

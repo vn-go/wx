@@ -26,12 +26,14 @@ import (
 	"reflect"
 )
 
+type errFactory struct {
+}
 type UriParamParseError struct {
 	ParamName    string
 	TypeOfStruct reflect.Type
 }
 
-func NewUriParamParseError(paramName string, typeOfStruct reflect.Type) error {
+func (f *errFactory) newUriParamParseError(paramName string, typeOfStruct reflect.Type) error {
 	return &UriParamParseError{
 		ParamName:    paramName,
 		TypeOfStruct: typeOfStruct,
@@ -47,7 +49,7 @@ type UriParamConvertError struct {
 	fielValueSetType reflect.Type
 }
 
-func NewUriParamConvertError(paramName string, valueSetType reflect.Type, fielValueSetType reflect.Type) error {
+func (f *errFactory) newUriParamConvertError(paramName string, valueSetType reflect.Type, fielValueSetType reflect.Type) error {
 	return &UriParamConvertError{
 		ParamName:        paramName,
 		ValueSetType:     valueSetType,
@@ -62,7 +64,7 @@ type BadRequestError struct {
 	Message string
 }
 
-func NewBadRequestError(message string) error {
+func (f *errFactory) newBadRequestError(message string) error {
 	return &BadRequestError{
 		Message: message,
 	}
@@ -77,7 +79,7 @@ type ParamMissMatchError struct {
 	Message string
 }
 
-func NewParamMissMatchError(message string) error {
+func (f *errFactory) newParamMissMatchError(message string) error {
 	return &ParamMissMatchError{
 		Message: message,
 	}
@@ -92,7 +94,7 @@ type ServiceInitError struct {
 	Message string
 }
 
-func NewServiceInitError(message string) error {
+func (f *errFactory) newServiceInitError(message string) error {
 	return &ServiceInitError{
 		Message: message,
 	}
@@ -115,7 +117,7 @@ func (err *RequireError) Error() string {
 	}
 	return string(bff)
 }
-func NewRequireError(fields []string, message string) error {
+func (f *errFactory) NewRequireError(fields []string, message string) error {
 	return &RequireError{
 		Fields:  fields,
 		Message: message,
@@ -127,7 +129,7 @@ type BodyParseError struct {
 	InnerError error
 }
 
-func NewBodyParseError(message string, InnerError error) error {
+func (f *errFactory) newBodyParseError(message string, InnerError error) error {
 	return &BodyParseError{
 		Message:    message,
 		InnerError: InnerError,
@@ -147,7 +149,7 @@ type FileParseError struct {
 func (e *FileParseError) Error() string {
 	return e.Message
 }
-func NewFileParseError(message string, InnerError error) error {
+func (f *errFactory) newFileParseError(message string, InnerError error) error {
 	return &FileParseError{
 		Message:    message,
 		InnerError: InnerError,
@@ -161,7 +163,7 @@ type MethodNotAllowError struct {
 func (e *MethodNotAllowError) Error() string {
 	return e.Message
 }
-func NewMethodNotAllowError(message string) error {
+func (f *errFactory) newMethodNotAllowError(message string) error {
 	return &MethodNotAllowError{
 		Message: message,
 	}
@@ -175,7 +177,7 @@ type NewMethodOfAuthNotFoundError struct {
 func (e *NewMethodOfAuthNotFoundError) Error() string {
 	return e.Message
 }
-func NewNewMethodOfAuthNotFoundError(message string) error {
+func (f *errFactory) newMethodOfAuthNotFoundError(message string) error {
 	return &NewMethodOfAuthNotFoundError{
 		Message: message,
 	}
@@ -188,7 +190,7 @@ type RegexUriNotMatchError struct {
 func (e *RegexUriNotMatchError) Error() string {
 	return e.Message
 }
-func NewRegexUriNotMatchError(message string) error {
+func (f *errFactory) newRegexUriNotMatchError(message string) error {
 	return &RegexUriNotMatchError{
 		Message: message,
 	}
@@ -202,7 +204,7 @@ type UnSupportError struct {
 func (e *UnSupportError) Error() string {
 	return e.Message
 }
-func NewUnSupportError(message string) error {
+func (f *errFactory) newUnSupportError(message string) error {
 	return &UnSupportError{
 		Message: message,
 	}
@@ -217,7 +219,7 @@ type ServerError struct {
 func (e *ServerError) Error() string {
 	return e.Message
 }
-func NewServerError(msg string, err error) error {
+func (f *errFactory) NewServerError(msg string, err error) error {
 	return &ServerError{
 		Err:     err,
 		Message: msg,
@@ -241,17 +243,36 @@ type UnacceptableContentError struct {
 func (e *UnacceptableContentError) Error() string {
 	bff, err := json.Marshal(e.Data)
 	if err != nil {
-		return NewServerError("Internal server error", err).Error()
+		return Errors.NewServerError("Internal server error", err).Error()
 	}
 	return string(bff)
 
 }
-func NewUnacceptableContentError(code, message string) error {
+func (f *errFactory) newUnacceptableContentError(code, message string) error {
 	return &UnacceptableContentError{
 		Data: unacceptableContentErrorData{
 			Error:   code,
 			Message: message,
 		},
+	}
+}
+
+type ForbiddenError struct {
+	data any
+}
+
+func (e *ForbiddenError) Error() string {
+	bff, err := json.Marshal(e.data)
+	if err != nil {
+		return "Forbiden"
+	} else {
+		return string(bff)
+	}
+
+}
+func (f *errFactory) NewForbidenError(data any) error {
+	return &ForbiddenError{
+		data: data,
 	}
 }
 
@@ -261,6 +282,65 @@ type UnauthorizedError struct {
 func (e *UnauthorizedError) Error() string {
 	return "Unauthorized"
 }
-func NewUnauthorizedError() error {
+func (f *errFactory) NewUnauthorizedError() error {
 	return &UnauthorizedError{}
 }
+
+type HTTPErrorCode int
+
+const (
+	ErrOK                  HTTPErrorCode = 200
+	ErrBadRequest          HTTPErrorCode = 400
+	ErrUnauthorized        HTTPErrorCode = 401
+	ErrForbidden           HTTPErrorCode = 403
+	ErrNotFound            HTTPErrorCode = 404
+	ErrConflict            HTTPErrorCode = 409
+	ErrUnprocessableEntity HTTPErrorCode = 422
+	ErrInternalServerError HTTPErrorCode = 500
+	// có thể bổ sung thêm...
+)
+
+// String trả về chuỗi mô tả tương ứng với error code
+func (c HTTPErrorCode) String() string {
+	switch c {
+	case ErrOK:
+		return "OK"
+	case ErrBadRequest:
+		return "Bad Request"
+	case ErrUnauthorized:
+		return "Unauthorized"
+	case ErrForbidden:
+		return "Forbidden"
+	case ErrNotFound:
+		return "Not Found"
+	case ErrConflict:
+		return "Conflict"
+	case ErrUnprocessableEntity:
+		return "Unprocessable Entity"
+	case ErrInternalServerError:
+		return "Internal Server Error"
+	default:
+		return "Unknown Error"
+	}
+}
+
+type HttpError struct {
+	Code HTTPErrorCode
+	Data any
+}
+
+func (e *HttpError) Error() string {
+	v, err := json.Marshal(e.Data)
+	if err != nil {
+		return e.Code.String()
+	}
+	return string(v)
+}
+func (f *errFactory) NewHttpError(Code HTTPErrorCode, data any) error {
+	return &HttpError{
+		Code: Code,
+		Data: data,
+	}
+}
+
+var Errors = &errFactory{}
