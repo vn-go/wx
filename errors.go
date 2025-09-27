@@ -33,12 +33,12 @@ type UriParamParseError struct {
 	TypeOfStruct reflect.Type
 }
 
-func (f *errFactory) newUriParamParseError(paramName string, typeOfStruct reflect.Type) error {
-	return &UriParamParseError{
-		ParamName:    paramName,
-		TypeOfStruct: typeOfStruct,
-	}
-}
+//	func (f *errFactory) newUriParamParseError(paramName string, typeOfStruct reflect.Type) error {
+//		return &UriParamParseError{
+//			ParamName:    paramName,
+//			TypeOfStruct: typeOfStruct,
+//		}
+//	}
 func (e *UriParamParseError) Error() string {
 	return fmt.Sprintf("%s was not found in %s", e.ParamName, e.TypeOfStruct.String())
 }
@@ -49,13 +49,13 @@ type UriParamConvertError struct {
 	fielValueSetType reflect.Type
 }
 
-func (f *errFactory) newUriParamConvertError(paramName string, valueSetType reflect.Type, fielValueSetType reflect.Type) error {
-	return &UriParamConvertError{
-		ParamName:        paramName,
-		ValueSetType:     valueSetType,
-		fielValueSetType: fielValueSetType,
-	}
-}
+//	func (f *errFactory) newUriParamConvertError(paramName string, valueSetType reflect.Type, fielValueSetType reflect.Type) error {
+//		return &UriParamConvertError{
+//			ParamName:        paramName,
+//			ValueSetType:     valueSetType,
+//			fielValueSetType: fielValueSetType,
+//		}
+//	}
 func (e *UriParamConvertError) Error() string {
 	return fmt.Sprintf("error converting from %s to %s", e.ValueSetType.String(), e.fielValueSetType.String())
 }
@@ -79,11 +79,11 @@ type ParamMissMatchError struct {
 	Message string
 }
 
-func (f *errFactory) newParamMissMatchError(message string) error {
-	return &ParamMissMatchError{
-		Message: message,
-	}
-}
+// func (f *errFactory) newParamMissMatchError(message string) error {
+// 	return &ParamMissMatchError{
+// 		Message: message,
+// 	}
+// }
 
 func (e *ParamMissMatchError) Error() string {
 	return e.Message
@@ -94,11 +94,11 @@ type ServiceInitError struct {
 	Message string
 }
 
-func (f *errFactory) newServiceInitError(message string) error {
-	return &ServiceInitError{
-		Message: message,
-	}
-}
+// func (f *errFactory) newServiceInitError(message string) error {
+// 	return &ServiceInitError{
+// 		Message: message,
+// 	}
+// }
 
 func (e *ServiceInitError) Error() string {
 	return e.Message
@@ -163,12 +163,13 @@ type MethodNotAllowError struct {
 func (e *MethodNotAllowError) Error() string {
 	return e.Message
 }
-func (f *errFactory) newMethodNotAllowError(message string) error {
-	return &MethodNotAllowError{
-		Message: message,
-	}
 
-}
+// func (f *errFactory) newMethodNotAllowError(message string) error {
+// 	return &MethodNotAllowError{
+// 		Message: message,
+// 	}
+
+// }
 
 type NewMethodOfAuthNotFoundError struct {
 	Message string
@@ -177,11 +178,12 @@ type NewMethodOfAuthNotFoundError struct {
 func (e *NewMethodOfAuthNotFoundError) Error() string {
 	return e.Message
 }
-func (f *errFactory) newMethodOfAuthNotFoundError(message string) error {
-	return &NewMethodOfAuthNotFoundError{
-		Message: message,
-	}
-}
+
+// func (f *errFactory) newMethodOfAuthNotFoundError(message string) error {
+// 	return &NewMethodOfAuthNotFoundError{
+// 		Message: message,
+// 	}
+// }
 
 type RegexUriNotMatchError struct {
 	Message string
@@ -204,11 +206,12 @@ type UnSupportError struct {
 func (e *UnSupportError) Error() string {
 	return e.Message
 }
-func (f *errFactory) newUnSupportError(message string) error {
-	return &UnSupportError{
-		Message: message,
-	}
-}
+
+// func (f *errFactory) newUnSupportError(message string) error {
+// 	return &UnSupportError{
+// 		Message: message,
+// 	}
+// }
 
 type ServerError struct {
 	// error form system, nere show at front-end
@@ -297,6 +300,70 @@ const (
 	ErrConflict            HTTPErrorCode = 409
 	ErrUnprocessableEntity HTTPErrorCode = 422
 	ErrInternalServerError HTTPErrorCode = 500
+
+	ErrPaymentRequired = 402 // RFC 9110, 15.5.3
+
+	ErrMethodNotAllowed  = 405 // RFC 9110, 15.5.6
+	ErrNotAcceptable     = 406 // RFC 9110, 15.5.7
+	ErrProxyAuthRequired = 407 // RFC 9110, 15.5.8
+	ErrRequestTimeout    = 408 // RFC 9110, 15.5.9
+
+	ErrGone                         = 410 // RFC 9110, 15.5.11
+	ErrLengthRequired               = 411 // RFC 9110, 15.5.12
+	ErrPreconditionFailed           = 412 // RFC 9110, 15.5.13
+	ErrRequestEntityTooLarge        = 413 // RFC 9110, 15.5.14
+	ErrRequestURITooLong            = 414 // RFC 9110, 15.5.15
+	ErrUnsupportedMediaType         = 415 // RFC 9110, 15.5.16
+	ErrRequestedRangeNotSatisfiable = 416 // RFC 9110, 15.5.17
+	ErrExpectationFailed            = 417 // RFC 9110, 15.5.18
+	ErrTeapot                       = 418 // RFC 9110, 15.5.19 (Unused)
+	ErrMisdirectedRequest           = 421 // RFC 9110, 15.5.20
+
+	ErrLocked                      = 423 // RFC 4918, 11.3
+	ErrFailedDependency            = 424 // RFC 4918, 11.4
+	ErrTooEarly                    = 425 // RFC 8470, 5.2.
+	ErrUpgradeRequired             = 426 // RFC 9110, 15.5.22
+	ErrPreconditionRequired        = 428 // RFC 6585, 3
+	ErrTooManyRequests             = 429 // RFC 6585, 4
+	ErrRequestHeaderFieldsTooLarge = 431 // RFC 6585, 5
+	ErrUnavailableForLegalReasons  = 451 // RFC 7725, 3
+
+	StatusContinue           = 100 // RFC 9110, 15.2.1
+	StatusSwitchingProtocols = 101 // RFC 9110, 15.2.2
+	StatusProcessing         = 102 // RFC 2518, 10.1
+	StatusEarlyHints         = 103 // RFC 8297
+
+	StatusOK                   = 200 // RFC 9110, 15.3.1
+	StatusCreated              = 201 // RFC 9110, 15.3.2
+	StatusAccepted             = 202 // RFC 9110, 15.3.3
+	StatusNonAuthoritativeInfo = 203 // RFC 9110, 15.3.4
+	StatusNoContent            = 204 // RFC 9110, 15.3.5
+	StatusResetContent         = 205 // RFC 9110, 15.3.6
+	StatusPartialContent       = 206 // RFC 9110, 15.3.7
+	StatusMultiStatus          = 207 // RFC 4918, 11.1
+	StatusAlreadyReported      = 208 // RFC 5842, 7.1
+	StatusIMUsed               = 226 // RFC 3229, 10.4.1
+
+	StatusMultipleChoices   = 300 // RFC 9110, 15.4.1
+	StatusMovedPermanently  = 301 // RFC 9110, 15.4.2
+	StatusFound             = 302 // RFC 9110, 15.4.3
+	StatusSeeOther          = 303 // RFC 9110, 15.4.4
+	StatusNotModified       = 304 // RFC 9110, 15.4.5
+	StatusUseProxy          = 305 // RFC 9110, 15.4.6
+	_                       = 306 // RFC 9110, 15.4.7 (Unused)
+	StatusTemporaryRedirect = 307 // RFC 9110, 15.4.8
+	StatusPermanentRedirect = 308 // RFC 9110, 15.4.9
+
+	ErrNotImplemented                = 501 // RFC 9110, 15.6.2
+	ErrBadGateway                    = 502 // RFC 9110, 15.6.3
+	ErrServiceUnavailable            = 503 // RFC 9110, 15.6.4
+	ErrGatewayTimeout                = 504 // RFC 9110, 15.6.5
+	ErrHTTPVersionNotSupported       = 505 // RFC 9110, 15.6.6
+	ErrVariantAlsoNegotiates         = 506 // RFC 2295, 8.1
+	ErrInsufficientStorage           = 507 // RFC 4918, 11.5
+	ErrLoopDetected                  = 508 // RFC 5842, 7.2
+	ErrNotExtended                   = 510 // RFC 2774, 7
+	ErrNetworkAuthenticationRequired = 511 // RFC 6585, 6
 	// có thể bổ sung thêm...
 )
 
