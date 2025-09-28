@@ -24,6 +24,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"strings"
 )
 
 type errFactory struct {
@@ -408,6 +409,23 @@ func (f *errFactory) NewHttpError(Code HTTPErrorCode, data any) error {
 		Code: Code,
 		Data: data,
 	}
+}
+func (f *errFactory) NewValidatorError(Invalidators []InfoCheck) error {
+	return &ValidatorError{
+		Invalidators: Invalidators,
+	}
+}
+
+type ValidatorError struct {
+	Invalidators []InfoCheck
+}
+
+func (e *ValidatorError) Error() string {
+	strItems := []string{}
+	for _, i := range e.Invalidators {
+		strItems = append(strItems, i.Message)
+	}
+	return strings.Join(strItems, "\n")
 }
 
 var Errors = &errFactory{}

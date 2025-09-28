@@ -67,6 +67,14 @@ func (h *handlerInfo) catchError(w http.ResponseWriter, err error) {
 	case *ForbiddenError:
 		status = http.StatusForbidden
 		body = []byte(e.Error())
+	case *ValidatorError:
+		status = http.StatusBadRequest // 500
+		b, err := json.Marshal(e.Invalidators)
+		if err != nil {
+			body = []byte(e.Error())
+		} else {
+			body = b
+		}
 	default:
 		// fallback for unexpected error
 		if Options.IsDebug {
@@ -264,6 +272,19 @@ func (info *handlerInfo) Invoke(w http.ResponseWriter, r *http.Request) ([]refle
 		} else {
 			args[info.indexOfArgIsRequestBody] = bodyValue.Elem()
 
+		}
+		if info.isAutoValidateBody {
+			// if auto check form body
+			if info.isFormPost {
+				dataFormValue := args[info.indexOfArgIsRequestBody].FieldByName("Data")
+				if checkList := Validators.CheckValue(dataFormValue); checkList != nil {
+					return nil, Errors.NewValidatorError(checkList)
+				}
+			} else {
+				if checkList := Validators.CheckValue(args[info.indexOfArgIsRequestBody]); checkList != nil {
+					return nil, Errors.NewValidatorError(checkList)
+				}
+			}
 		}
 
 	}

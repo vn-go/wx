@@ -10,10 +10,47 @@ func (u *utilsType) ExtractBodyInfo(ret *handlerInfo) {
 			ret.typeOfRequestBody = ret.method.Type.In(i)
 			if ret.typeOfRequestBody.Kind() == reflect.Ptr {
 				ret.typeOfRequestBodyElem = ret.typeOfRequestBody.Elem()
+
 				ret.isFormPost = isFormType(ret.typeOfRequestBodyElem)
+				if ret.isFormPost {
+					// if is form post check Data field in ret.typeOfRequestBodyElem if it need validate
+					if fData, ok := ret.typeOfRequestBodyElem.FieldByName("Data"); ok {
+						if Validators.init(fData.Type) != nil {
+							ret.isAutoValidateBody = true
+						}
+					} else {
+						if Validators.init(ret.typeOfRequestBodyElem) != nil {
+							ret.isAutoValidateBody = true
+						}
+					}
+
+				} else {
+					if Validators.init(ret.typeOfRequestBodyElem) != nil {
+						ret.isAutoValidateBody = true
+					}
+				}
+
 			} else {
 				ret.typeOfRequestBodyElem = ret.typeOfRequestBody
+
 				ret.isFormPost = isFormType(ret.typeOfRequestBodyElem)
+				if ret.isFormPost {
+					// if is form post check Data field in ret.typeOfRequestBodyElem if it need validate
+					if fData, ok := ret.typeOfRequestBodyElem.FieldByName("Data"); ok {
+						if Validators.init(fData.Type) != nil {
+							ret.isAutoValidateBody = true
+						}
+					} else {
+						if Validators.init(ret.typeOfRequestBodyElem) != nil {
+							ret.isAutoValidateBody = true
+						}
+					}
+
+				} else {
+					if Validators.init(ret.typeOfRequestBodyElem) != nil {
+						ret.isAutoValidateBody = true
+					}
+				}
 			}
 			if fileUploadField, found := utils.formDetect.FindFormUploadField(ret.typeOfRequestBodyElem); found {
 				if len(fileUploadField) > 0 {

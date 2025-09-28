@@ -61,6 +61,7 @@ type handlerInfo struct {
 	listOfIndexFieldIsFormUploadFile []int
 	typeOfRequestBodyElem            reflect.Type
 	typeOfRequestBody                reflect.Type
+	isAutoValidateBody               bool
 	// indexOfArhIsAuthClaims           int
 	indexOfArgIsRequestBody int
 	isFormPost              bool
