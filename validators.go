@@ -43,7 +43,7 @@ type InfoCheck struct {
 	FieldName     string `json:"fieldName"`
 	MinValue      any    `json:"minValue"`
 	MaxValue      any    `json:"maxValue"`
-	Value         any    `json:"value"`
+	//Value         any    `json:"value"`
 }
 
 var initInitCheckCache sync.Map
@@ -270,7 +270,7 @@ func (v *validators) checkIsInRangeTime(fieldName string, val, min, max reflect.
 				MessageLayout: fmt.Sprintf("Value of '{FieldName}' be %s {MinValue} and %s {MaxValue}", v.revertOp(opMin), v.revertOp(opMax)),
 				MinValue:      from,
 				MaxValue:      to,
-				Value:         dVal,
+				//Value:         dVal,
 			}
 		}
 
@@ -282,7 +282,7 @@ func (v *validators) checkIsInRangeTime(fieldName string, val, min, max reflect.
 				Message:       fmt.Sprintf("Value of '%s' must be %s  %s", fieldName, v.revertOp(opMin), from),
 				MessageLayout: fmt.Sprintf("Value of '{FieldName}' must be %s {MinValue}", v.revertOp(opMin)),
 				MinValue:      from,
-				Value:         dVal,
+				//Value:         dVal,
 			}
 		}
 
@@ -294,7 +294,7 @@ func (v *validators) checkIsInRangeTime(fieldName string, val, min, max reflect.
 				Message:       fmt.Sprintf("Value of '%s' must be %s  %s", fieldName, v.revertOp(opMax), to),
 				MessageLayout: fmt.Sprintf("Value of '{FieldName}' must be %s {MaxValue}", v.revertOp(opMax)),
 				MaxValue:      to,
-				Value:         dVal,
+				//Value:         dVal,
 			}
 		}
 
@@ -309,7 +309,7 @@ func (v *validators) checkIsInRangeInt(fieldName string, val, min, max reflect.V
 				MessageLayout: fmt.Sprintf("Value of '{FieldName}' must be %s {MinValue} and %s {MaxValue}", v.revertOp(opMin), v.revertOp(opMax)),
 				MinValue:      min.Int(),
 				MaxValue:      max.Int(),
-				Value:         val.Int(),
+				//Value:         val.Int(),
 			}
 		}
 	}
@@ -319,7 +319,7 @@ func (v *validators) checkIsInRangeInt(fieldName string, val, min, max reflect.V
 				Message:       fmt.Sprintf("Value of '%s' must be %s %d", fieldName, v.revertOp(opMin), min.Int()),
 				MessageLayout: fmt.Sprintf("Value of '{FieldName}' must be %s {MaxValue}", v.revertOp(opMin)),
 				MinValue:      min.Int(),
-				Value:         val.Int(),
+				//Value:         val.Int(),
 			}
 		}
 	}
@@ -330,7 +330,7 @@ func (v *validators) checkIsInRangeInt(fieldName string, val, min, max reflect.V
 				MessageLayout: fmt.Sprintf("Value of '{FieldName}' must be %s {MaxValue}", v.revertOp(opMax)),
 
 				MaxValue: max.Int(),
-				Value:    val.Int(),
+				//Value:    val.Int(),
 			}
 		}
 	}
@@ -344,7 +344,7 @@ func (v *validators) checkIsInRangeUInt(fieldName string, val, min, max reflect.
 				MessageLayout: fmt.Sprintf("Value of '{FieldName}' must be %s {MinValue} and %s {MaxValue}", v.revertOp(opMin), v.revertOp(opMax)),
 				MinValue:      min.Uint(),
 				MaxValue:      max.Uint(),
-				Value:         val.Uint(),
+				//Value:         val.Uint(),
 			}
 		}
 	}
@@ -354,7 +354,7 @@ func (v *validators) checkIsInRangeUInt(fieldName string, val, min, max reflect.
 				Message:       fmt.Sprintf("Value of '%s' must be %s %d", fieldName, v.revertOp(opMin), min.Uint()),
 				MessageLayout: fmt.Sprintf("Value of '{FieldName}' must be %s {MinValue}", v.revertOp(opMin)),
 				MinValue:      min.Uint(),
-				Value:         val.Uint(),
+				//Value:         val.Uint(),
 			}
 		}
 	}
@@ -365,7 +365,7 @@ func (v *validators) checkIsInRangeUInt(fieldName string, val, min, max reflect.
 				MessageLayout: fmt.Sprintf("'{FieldName}' must be %s {MaxValue}", v.revertOp(opMax)),
 
 				MaxValue: max.Uint(),
-				Value:    val.Uint(),
+				//Value:    val.Uint(),
 			}
 		}
 	}
@@ -380,7 +380,7 @@ func (v *validators) checkIsInRangeFloat(fieldName string, val, min, max reflect
 				MessageLayout: fmt.Sprintf("Value of '{FieldName}' must be %s  {MinValue} and %s {MaxValue}", v.revertOp(opMin), v.revertOp(opMax)),
 				MinValue:      min.Float(),
 				MaxValue:      max.Float(),
-				Value:         val.Float(),
+				//Value:         val.Float(),
 			}
 		}
 	}
@@ -390,7 +390,7 @@ func (v *validators) checkIsInRangeFloat(fieldName string, val, min, max reflect
 				Message:       fmt.Sprintf("Value of '%s' must be %s %f", fieldName, v.revertOp(opMin), min.Float()),
 				MessageLayout: fmt.Sprintf("Value of '{FieldName}' must be %s {MinValue}", v.revertOp(opMin)),
 				MinValue:      min.Float(),
-				Value:         val.Float(),
+				//Value:         val.Float(),
 			}
 		}
 	}
@@ -401,7 +401,7 @@ func (v *validators) checkIsInRangeFloat(fieldName string, val, min, max reflect
 				MessageLayout: fmt.Sprintf("Value of '{FieldName}' must be %s {MaxValue}", v.revertOp(opMax)),
 
 				MaxValue: max.Float(),
-				Value:    val.Float(),
+				//Value:    val.Float(),
 			}
 		}
 	}
@@ -415,7 +415,7 @@ func (v *validators) checkLenIsInRange(fieldName string, val, min, max reflect.V
 				MessageLayout: fmt.Sprintf("Len of '{FieldName}' must be %s  {MinValue} and %s {MaxValue}", v.revertOp(opMin), v.revertOp(opMax)),
 				MinValue:      min.Int(),
 				MaxValue:      max.Int(),
-				Value:         val.String(),
+				//Value:         val.String(),
 			}
 		}
 	}
@@ -425,7 +425,7 @@ func (v *validators) checkLenIsInRange(fieldName string, val, min, max reflect.V
 				Message:       fmt.Sprintf("Len of '%s' must be %s %d", fieldName, v.revertOp(opMin), min.Int()),
 				MessageLayout: fmt.Sprintf("Len of  '{FieldName}' must be %s {MinValue}", v.revertOp(opMin)),
 				MinValue:      min.Int(),
-				Value:         val.String(),
+				//Value:         val.String(),
 			}
 		}
 	}
@@ -436,7 +436,7 @@ func (v *validators) checkLenIsInRange(fieldName string, val, min, max reflect.V
 				MessageLayout: fmt.Sprintf("Len of  '{FieldName}' must be %s {MaxValue}", v.revertOp(opMax)),
 
 				MaxValue: max.Int(),
-				Value:    val.String(),
+				//Value:    val.String(),
 			}
 		}
 	}
@@ -522,7 +522,7 @@ func (v *validators) CheckValue(val reflect.Value) []InfoCheck {
 						Message:       msg,
 						MessageLayout: "Value of {FieldName} is invalid",
 						FieldName:     i.field.Name,
-						Value:         f.String(),
+						//Value:         f.String(),
 					})
 				}
 			}

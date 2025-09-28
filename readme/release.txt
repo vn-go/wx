@@ -76,3 +76,10 @@ git tag -a v0.1.21 -m "support body validate tags"
 git push origin v0.1.21
 git push origin --tags
 #go get github.com/vn-go/wx@v0.1.21
+---
+git add .
+git commit -m "support body validate tags"
+git tag -a v0.1.22 -m "support body validate tags"
+git push origin v0.1.22
+git push origin --tags
+#go get github.com/vn-go/wx@v0.1.22
