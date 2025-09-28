@@ -409,7 +409,7 @@ func (v *validators) checkIsInRangeFloat(fieldName string, val, min, max reflect
 }
 func (v *validators) checkLenIsInRange(fieldName string, val, min, max reflect.Value, opMin, opMax string) *InfoCheck {
 	if min.IsValid() && max.IsValid() {
-		if !(v.compareInt64(min.Int(), int64(val.Len()), opMin) && v.compareInt64(int64(val.Len()), max.Int(), opMax)) {
+		if !(v.compareInt64(min.Int(), int64(val.Len()), opMin) && v.compareInt64(max.Int(), int64(val.Len()), opMax)) {
 			return &InfoCheck{
 				Message:       fmt.Sprintf("Len of '%s' must be %s %d and %s %d", fieldName, v.revertOp(opMin), min.Int(), v.revertOp(opMax), max.Int()),
 				MessageLayout: fmt.Sprintf("Len of '{FieldName}' must be %s  {MinValue} and %s {MaxValue}", v.revertOp(opMin), v.revertOp(opMax)),
@@ -430,7 +430,7 @@ func (v *validators) checkLenIsInRange(fieldName string, val, min, max reflect.V
 		}
 	}
 	if !min.IsValid() && max.IsValid() {
-		if !v.compareInt64(int64(val.Len()), max.Int(), opMax) {
+		if !v.compareInt64(max.Int(), int64(val.Len()), opMax) {
 			return &InfoCheck{
 				Message:       fmt.Sprintf("'%s' must be %s %d", fieldName, v.revertOp(opMax), max.Int()),
 				MessageLayout: fmt.Sprintf("Len of  '{FieldName}' must be %s {MaxValue}", v.revertOp(opMax)),
@@ -527,6 +527,9 @@ func (v *validators) CheckValue(val reflect.Value) []InfoCheck {
 				}
 			}
 		}
+	}
+	if len(ret) == 0 {
+		return nil
 	}
 	return ret
 }
