@@ -64,6 +64,7 @@ type httpContext struct {
 	Res        http.ResponseWriter
 	rootAbsUrl string
 	schema     string
+	ApiPath    string
 }
 type Handler func() *httpContext
 type Form[T any] struct {
