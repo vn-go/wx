@@ -49,17 +49,18 @@ type InfoCheck struct {
 var initInitCheckCache sync.Map
 
 func (v *validators) revertOp(op string) string {
-	switch op {
-	case "<":
-		return ">="
-	case "<=":
-		return ">"
-	case ">":
-		return "<="
-	case ">=":
-		return "<"
-	}
-	return ""
+	return op
+	// switch op {
+	// case "<":
+	// 	return ">="
+	// case "<=":
+	// 	return ">"
+	// case ">":
+	// 	return "<="
+	// case ">=":
+	// 	return "<"
+	// }
+	// return ""
 }
 func (v *validators) compareFloat64(a, b float64, op string) bool {
 	if op == "<" {
@@ -197,13 +198,13 @@ func (v *validators) initCheck(typ reflect.Type, visited map[reflect.Type]bool) 
 			txtTags := strings.Split(strings.Split(tag, ";range:")[1], ";")[0]
 			if strings.Contains(txtTags, ":") {
 				items := strings.Split(txtTags, ":")
-				opMax := ">="
+				opMax := ">"
 				if items[1][len(items[1])-1] == ']' {
-					opMax = ">"
+					opMax = ">="
 				}
-				opMin := "<="
+				opMin := "<"
 				if items[0][0] == '[' {
-					opMin = "<"
+					opMin = "<="
 				}
 				chks = append(chks, checks{
 					opMax:     opMax,
