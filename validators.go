@@ -51,13 +51,13 @@ var initInitCheckCache sync.Map
 func (v *validators) revertOp(op string) string {
 	switch op {
 	case "<":
-		return ">="
-	case "<=":
 		return ">"
+	case "<=":
+		return ">="
 	case ">":
-		return "<="
-	case ">=":
 		return "<"
+	case ">=":
+		return "<="
 	}
 	return ""
 }
@@ -198,11 +198,11 @@ func (v *validators) initCheck(typ reflect.Type, visited map[reflect.Type]bool) 
 			if strings.Contains(txtTags, ":") {
 				items := strings.Split(txtTags, ":")
 				opMax := ">"
-				if items[1][len(items[1])-1] == ')' {
+				if items[1][len(items[1])-1] == ']' {
 					opMax = ">="
 				}
 				opMin := "<"
-				if items[0][0] == '(' {
+				if items[0][0] == '[' {
 					opMin = "<="
 				}
 				chks = append(chks, checks{
