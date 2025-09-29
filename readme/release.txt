@@ -132,3 +132,10 @@ git tag -a v0.1.29 -m "support auth with ApiPath"
 git push origin v0.1.29
 git push origin --tags
 #go get github.com/vn-go/wx@v0.1.29
+--
+git add .
+git commit -m "support auth with ApiPath"
+git tag -a v0.1.30 -m "support auth with ApiPath"
+git push origin v0.1.30
+git push origin --tags
+#go get github.com/vn-go/wx@v0.1.30

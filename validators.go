@@ -197,13 +197,13 @@ func (v *validators) initCheck(typ reflect.Type, visited map[reflect.Type]bool) 
 			txtTags := strings.Split(strings.Split(tag, ";range:")[1], ";")[0]
 			if strings.Contains(txtTags, ":") {
 				items := strings.Split(txtTags, ":")
-				opMax := ">="
-				if items[1][len(items[1])-1] == ']' {
-					opMax = ">"
+				opMax := ">"
+				if items[1][len(items[1])-1] == ')' {
+					opMax = ">="
 				}
-				opMin := "<="
-				if items[0][0] == '[' {
-					opMin = "<"
+				opMin := "<"
+				if items[0][0] == '(' {
+					opMin = "<="
 				}
 				chks = append(chks, checks{
 					opMax:     opMax,
