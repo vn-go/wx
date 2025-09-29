@@ -49,18 +49,17 @@ type InfoCheck struct {
 var initInitCheckCache sync.Map
 
 func (v *validators) revertOp(op string) string {
-	return op
-	// switch op {
-	// case "<":
-	// 	return ">="
-	// case "<=":
-	// 	return ">"
-	// case ">":
-	// 	return "<="
-	// case ">=":
-	// 	return "<"
-	// }
-	// return ""
+	switch op {
+	case "<":
+		return ">="
+	case "<=":
+		return ">"
+	case ">":
+		return "<="
+	case ">=":
+		return "<"
+	}
+	return ""
 }
 func (v *validators) compareFloat64(a, b float64, op string) bool {
 	if op == "<" {
