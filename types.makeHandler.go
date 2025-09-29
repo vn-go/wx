@@ -1,6 +1,7 @@
 package wx
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"mime/multipart"
@@ -9,6 +10,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/google/uuid"
 	"github.com/vn-go/wx/internal"
 )
 
@@ -183,16 +185,25 @@ func (info *handlerInfo) createHandler(w http.ResponseWriter, r *http.Request) H
 
 	ret := func() *httpContext {
 		return &httpContext{
-			Req: r,
-			Res: w,
+			Req:     r,
+			Res:     w,
+			ApiPath: info.uri,
 		}
 	}
 	return ret
 }
 func (info *handlerInfo) Invoke(w http.ResponseWriter, r *http.Request) ([]reflect.Value, error) {
+	reqID := r.Header.Get("X-Request-ID")
+	if reqID == "" {
+		reqID = uuid.NewString()
+	}
 
+	// gắn vào context
+	ctx := context.WithValue(r.Context(), "requestID", reqID)
+
+	w.Header().Set("X-Request-ID", reqID) // trả về cho client
 	contentType := r.Header.Get("Content-Type")
-	valueOfArgsIsHandler, valueOfHandlerFunction := info.CreateHandlerValue(r, w)
+	valueOfArgsIsHandler, valueOfHandlerFunction := info.CreateHandlerValue(r.WithContext(ctx), w)
 	var controller reflect.Value
 	if Options.UsePool {
 		controller = poolValues.Get(info.controllerTypeElem)
