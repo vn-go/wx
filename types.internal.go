@@ -19,6 +19,7 @@ type uriParam struct {
 	FieldIndex []int
 }
 type handlerInfo struct {
+	
 	/*
 		The argument index in the method is a Handler, or the struct has an embedded Handler field.
 		Example:
@@ -61,6 +62,7 @@ type handlerInfo struct {
 	listOfIndexFieldIsFormUploadFile []int
 	typeOfRequestBodyElem            reflect.Type
 	typeOfRequestBody                reflect.Type
+	typeOfResponse                   reflect.Type
 	isAutoValidateBody               bool
 	// indexOfArhIsAuthClaims           int
 	indexOfArgIsRequestBody int

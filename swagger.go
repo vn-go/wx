@@ -174,6 +174,58 @@ func (sb *swaggerBuild) LoadFromRoutes() *swaggerBuild {
 		handlerList = append(handlerList, swagerInfo)
 
 	}
+	for k, v := range swaggerInfo {
+		if v.HttpMethod == "GET" {
+			h := webHandler{
+				RoutePath: k,
+				ApiInfo: &handlerInfo{
+
+					uri:                     k,
+					indexOfArgIsRequestBody: -1,
+					controllerTypeElem:      v.controllerType,
+				},
+				Method:      v.HttpMethod,
+				RequestType: v.requestContentType,
+				ResposeType: v.responseContentType,
+			}
+			handlerList = append(handlerList, h)
+		} else if v.HttpMethod == "FORM_POST" {
+
+			h := webHandler{
+				RequestType: v.requestContentType,
+				ResposeType: v.responseContentType,
+				RoutePath:   k,
+				ApiInfo: &handlerInfo{
+					typeOfRequestBodyElem: v.requestBodyType,
+
+					uri:                              k,
+					indexOfArgIsRequestBody:          1,
+					controllerTypeElem:               v.controllerType,
+					isFormPost:                       v.IsHasFileUpload,
+					listOfIndexFieldIsFormUploadFile: v.listOfIndexFieldIsFormUploadFile,
+				},
+				Method: "POST",
+			}
+			handlerList = append(handlerList, h)
+		} else {
+			h := webHandler{
+				RoutePath: k,
+				ApiInfo: &handlerInfo{
+					typeOfRequestBodyElem:            v.requestBodyType,
+					uri:                              k,
+					indexOfArgIsRequestBody:          1,
+					controllerTypeElem:               v.controllerType,
+					isFormPost:                       v.IsHasFileUpload,
+					listOfIndexFieldIsFormUploadFile: v.listOfIndexFieldIsFormUploadFile,
+				},
+				Method:      v.HttpMethod,
+				RequestType: v.requestContentType,
+				ResposeType: v.responseContentType,
+			}
+			handlerList = append(handlerList, h)
+		}
+
+	}
 	sb.swagger3GetPaths()
 
 	return sb

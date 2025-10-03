@@ -392,10 +392,7 @@ func (c HTTPErrorCode) String() string {
 	}
 }
 
-type HttpError struct {
-	Code HTTPErrorCode
-	Data any
-}
+
 
 func (e *HttpError) Error() string {
 	v, err := json.Marshal(e.Data)

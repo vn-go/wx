@@ -1,7 +1,10 @@
 package main
 
 import (
+	"fmt"
+	"log"
 	"mime/multipart"
+	"net/http"
 
 	"github.com/vn-go/wx"
 )
@@ -46,22 +49,39 @@ func (auth *Oauth) Upload(ctx wx.Handler, body struct {
 }) (any, error) {
 	return body.Data, nil
 }
-func main() {
-	wx.Options.UsePool = true
-	if err := wx.Routes("/api", &Media{}, &Oauth{}); err != nil {
-		panic(err)
-	}
-	server := wx.NewHtttpServer("/api", "8080", "0.0.0.0")
-	swagger := wx.CreateSwagger(server, "/swagger")
-	swagger.Info(wx.SwaggerInfo{
-		Title:       "Swagger Example API",
-		Description: "This is a sample server Petstore server.",
-		Version:     "1.0.0",
-	})
-	swagger.OAuth2Password("/api/oauth/login")
-	swagger.Build()
 
-	server.Middleware(wx.MiddlWares.Cors)
-	server.Middleware(wx.MiddlWares.Zip)
+type HelloController struct {
+}
+
+func main() {
+	go func() {
+		fmt.Println("pprof running at :6060")
+		log.Println(http.ListenAndServe("localhost:6060", nil))
+	}()
+	// wx.HandlerPost("test/hello", func(ctl *HelloController, ctx *wx.HttpContext, msg string) (string, error) {
+	// 	return fmt.Sprintf("%s:Hello %s", ctx.Uri, msg), nil
+	// })
+	// wx.HandlerPost("test/hello2", func(ctl *HelloController, ctx *wx.HttpContext, msg string) (string, error) {
+	// 	return fmt.Sprintf("%s:Hello %s", ctx.Uri, msg), nil
+	// })
+	// wx.HandlerGet("test/hello3", func(ctl *HelloController, ctx *wx.HttpContext) (string, error) {
+	// 	return fmt.Sprintf("%s:Hello", ctx.Uri), nil
+	// })
+	wx.HandlerPost("test/hello4", func(ctl *HelloController, ctx *wx.HttpContext, data struct {
+		// Code     string
+		// Name     string
+		FileTest *multipart.FileHeader
+	}) (string, error) {
+		return fmt.Sprintf("%s:Hello", ctx.Uri), nil
+	})
+	//wx.Options.IsDebug = core.Services.Config.Debug
+	//wx.Options.UsePool = true
+	//routes.InitRoute()
+
+	//wx.Routes("/api", &Hello{})
+	server := wx.NewHtttpServer("/api", "8080", "0.0.0.0")
+	swagger := wx.CreateSwagger(server, "/docs")
+	swagger.OAuth2Password("/api/auth/login")
+	swagger.Build()
 	server.Start()
 }

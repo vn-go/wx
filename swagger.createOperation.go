@@ -1,6 +1,9 @@
 package wx
 
 import (
+	"fmt"
+	"reflect"
+
 	swaggers3 "github.com/vn-go/wx/swagger3"
 )
 
@@ -14,18 +17,38 @@ func (sb *swaggerBuild) createOperation(handler webHandler) *swaggers3.Operation
 			},
 		},
 	}
+	postContentType := "application/json"
+	if handler.RequestType != "" {
+		postContentType = handler.RequestType
+	}
 	if handler.Method == "POST" {
 		content = map[string]swaggers3.MediaType{
-			"application/json": {
+			postContentType: {
 				Schema: &swaggers3.Schema{
 					Type: "object",
 				},
 			},
 		}
 	}
-
+	tag := ""
+	if handler.ApiInfo.controllerTypeElem != nil {
+		tag = handler.ApiInfo.controllerTypeElem.String()
+	}
+	//Examples := map[string]swaggers3.Example{}
+	var nilType reflect.Type
+	if handler.ApiInfo.typeOfResponse != nilType {
+		if handler.ApiInfo.typeOfResponse.Kind() == reflect.Ptr {
+			handler.ApiInfo.typeOfResponse = handler.ApiInfo.typeOfResponse.Elem()
+			ExamplesData := reflect.New(handler.ApiInfo.typeOfResponse).Interface()
+			// bff,err:=json.MarshalIndent(ExamplesData," ")
+			// if err==nil {
+			// 	Examples
+			// }
+			fmt.Println(ExamplesData)
+		}
+	}
 	ret := &swaggers3.Operation{
-		Tags: []string{handler.ApiInfo.controllerTypeElem.String()},
+		Tags: []string{tag},
 
 		Parameters: sb.createParamtersFromUriParams(handler),
 		Responses: map[string]swaggers3.Response{

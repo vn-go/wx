@@ -21,8 +21,12 @@ type htttpServer struct {
 	handler http.Handler
 	// server is the underlying http.Server.
 
-	mws []func(w http.ResponseWriter, r *http.Request, next http.HandlerFunc)
+	mws           []func(w http.ResponseWriter, r *http.Request, next http.HandlerFunc)
+	MaxBodySize   uint64
+	MaxUploadSize uint64
 }
+
+var currentServer *htttpServer
 
 /*
 This function create a new htttpServer, after calling this function call htttpServer.Start
@@ -36,25 +40,39 @@ func NewHtttpServer(baseUrl string, port string, bind string) *htttpServer {
 	}
 	baseUrl = strings.ReplaceAll(baseUrl, "//", "/")
 	mux := http.NewServeMux()
-	return &htttpServer{
+	currentServer = &htttpServer{
 		Port:    port,
 		Bind:    bind,
 		BaseUrl: baseUrl,
 
-		mux: mux,
-		mws: []func(w http.ResponseWriter, r *http.Request, next http.HandlerFunc){},
+		mux:           mux,
+		mws:           []func(w http.ResponseWriter, r *http.Request, next http.HandlerFunc){},
+		MaxBodySize:   20 << 20,
+		MaxUploadSize: 20 << 20,
 	}
+	return currentServer
 
+}
+func (s *htttpServer) SetMaxBodySize(val uint64) {
+	s.MaxBodySize = val
+}
+func (s *htttpServer) SetMaxUploadSize(val uint64) {
+	s.MaxUploadSize = val
 }
 func (s *htttpServer) loadController() error {
 	for _, x := range utils.Routes.UriList {
 		fmt.Println("Registering route:", x)
-		// s.mux.HandleFunc(x, func(w http.ResponseWriter, r *http.Request) {
-		// 	route := utils.Routes.Data[x]
-		// 	route.Info.Invoke(w, r)
-		// })
+
 		s.mux.HandleFunc(x, utils.Routes.Data[x].Info.Handler())
 
+	}
+	for k, v := range handlerMapping {
+		uri := fmt.Sprintf("/%s/%s", s.BaseUrl, k)
+		for strings.HasPrefix(uri, "//") {
+			uri = uri[1:]
+		}
+		fmt.Println("Registering route:", uri)
+		s.mux.HandleFunc(uri, v)
 	}
 	return nil
 

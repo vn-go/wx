@@ -98,9 +98,15 @@ func (sb *swaggerBuild) createRequestBody(handler webHandler) *swaggers3.Request
 
 			}
 		}
-
+		isRequire := false
+		var nitMethod reflect.Method
+		if handler.ApiInfo.method != nitMethod {
+			isRequire = handler.ApiInfo.method.Type.In(handler.ApiInfo.indexOfArgIsRequestBody).Kind() == reflect.Ptr
+		} else {
+			isRequire = handler.ApiInfo.typeOfRequestBodyElem.Kind() != reflect.Ptr
+		}
 		ret := &swaggers3.RequestBody{
-			Required: handler.ApiInfo.method.Type.In(handler.ApiInfo.indexOfArgIsRequestBody).Kind() == reflect.Ptr,
+			Required: isRequire,
 			Content: map[string]swaggers3.MediaType{
 				"multipart/form-data": {
 					Schema: &swaggers3.Schema{
@@ -112,14 +118,35 @@ func (sb *swaggerBuild) createRequestBody(handler webHandler) *swaggers3.Request
 		}
 		return ret
 	} else {
+		var IsRequired = false
+		var nullMethod reflect.Method
+		var nilType reflect.Type
+		if handler.ApiInfo.typeOfRequestBodyElem != nilType {
+			if handler.ApiInfo.method != nullMethod {
+				IsRequired = handler.ApiInfo.method.Type.In(handler.ApiInfo.indexOfArgIsRequestBody).Kind() == reflect.Ptr
+			} else {
+				IsRequired = handler.ApiInfo.typeOfRequestBodyElem.Kind() != reflect.Ptr
+				if handler.ApiInfo.typeOfRequestBodyElem.Kind() == reflect.Ptr {
+					handler.ApiInfo.typeOfRequestBodyElem = handler.ApiInfo.typeOfRequestBodyElem.Elem()
+				}
+			}
+		}
+		var example any
+		if handler.ApiInfo.typeOfRequestBodyElem != nilType {
+			example = reflect.New(handler.ApiInfo.typeOfRequestBodyElem).Interface()
+		}
+		requestType := "application/json"
+		if handler.RequestType != "" {
+			requestType = handler.RequestType
+		}
 		ret := &swaggers3.RequestBody{
-			Required: handler.ApiInfo.method.Type.In(handler.ApiInfo.indexOfArgIsRequestBody).Kind() == reflect.Ptr,
+			Required: IsRequired,
 			Content: map[string]swaggers3.MediaType{
-				"application/json": {
+				requestType: {
 					Schema: &swaggers3.Schema{
 						Type: "object",
 					},
-					Example: reflect.New(handler.ApiInfo.typeOfRequestBodyElem).Interface(),
+					Example: example,
 				},
 			},
 		}
