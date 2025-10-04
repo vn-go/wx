@@ -201,7 +201,7 @@ func (info *handlerInfo) Invoke(w http.ResponseWriter, r *http.Request) ([]refle
 	// gắn vào context
 	ctx := context.WithValue(r.Context(), "requestID", reqID)
 
-	w.Header().Set("X-Request-ID", reqID) // trả về cho client
+	//w.Header().Set("X-Request-ID", reqID) // trả về cho client
 	contentType := r.Header.Get("Content-Type")
 	valueOfArgsIsHandler, valueOfHandlerFunction := info.CreateHandlerValue(r.WithContext(ctx), w)
 	var controller reflect.Value

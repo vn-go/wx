@@ -12,6 +12,7 @@ type webHandler struct {
 	InitFunc    reflect.Value
 	Method      string
 	Index       int
+	uriInfo     inspectUriInfo
 }
 
 var handlerList []webHandler

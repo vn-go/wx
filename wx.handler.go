@@ -8,15 +8,141 @@ import (
 	"mime/multipart"
 	"net/http"
 	"reflect"
+	"regexp"
+	"runtime/debug"
 	"strconv"
 	"strings"
+	"sync"
 )
 
-type HttpContext struct {
-	Req *http.Request
-	Res http.ResponseWriter
-	Uri string
+type IdentifierInfo[TIdentifier any] struct {
+	Id any
 }
+type HttpContext[TIdentifier any] struct {
+	RootRouter string
+	Req        *http.Request
+	Res        http.ResponseWriter
+	Uri        string
+	Identifier any
+	//fix so need'nt clear when put to sync.pool
+	rootAbsUrl string
+	//fix so need'nt clear when put to sync.pool
+	schema   string
+	uriRegex string
+	//parse all path in Req.Uri
+	//example "/api/hellocontroller/test/hello4/movie/a001.mp4?filePath=loaad-dir"
+	//for uriRegex is "^hellocontroller/test/hello4/([^/]+)/([^/]+)\\.mp4$"
+	//and aslo know RootRouter = "/api"
+	uriParams     map[string]string
+	uriParamsList []string
+	//parse all query to example "?a=1&b=2" queryParams={"a":1,"b":2}
+	queryParams map[string]string
+}
+
+func (c *HttpContext[TIdentifier]) Reset() {
+	c.Req = nil
+	c.Res = nil
+	c.Uri = ""
+	c.Identifier = nil
+	//c.isRegex = false
+	c.queryParams = map[string]string{}
+	c.uriParams = map[string]string{}
+	c.uriParamsList = []string{}
+
+}
+
+// loadAllParams parses both the path parameters (uriParams)
+// and query parameters (queryParams) from the request URL.
+//
+// Example:
+//
+//	Req.URL.Path  = "/api/hellocontroller/test/hello4/movie/a001.mp4"
+//	RootRouter    = "/api"
+//	uriRegex      = "^hellocontroller/test/hello4/([^/]+)/([^/]+)\\.mp4$"
+//	→ uriParams = {"0": "movie", "1": "a001"}
+//
+//	Req.URL.RawQuery = "filePath=load-dir&lang=en"
+//	→ queryParams = {"filePath": "load-dir", "lang": "en"}
+func (c *HttpContext[TIdentifier]) loadAllParams() {
+	if c.Req == nil {
+		return
+	}
+
+	// --- 1. Parse query parameters ---
+	queryValues := c.Req.URL.Query()
+	if len(queryValues) > 0 {
+		if c.queryParams == nil {
+			c.queryParams = make(map[string]string, len(queryValues))
+		}
+		for key, vals := range queryValues {
+			if len(vals) > 0 {
+				c.queryParams[key] = vals[0]
+			}
+		}
+	}
+
+	// --- 2. Parse URI path parameters (if regex is available) ---
+	if c.uriRegex == "" {
+		return
+	}
+
+	reg, err := regexp.Compile(c.uriRegex)
+	if err != nil {
+		// Invalid regex – skip path parsing
+		return
+	}
+
+	path := strings.TrimPrefix(c.Req.URL.Path, c.RootRouter)
+	path = strings.TrimPrefix(path, "/")
+
+	matches := reg.FindStringSubmatch(path)
+	if len(matches) == 0 {
+		return
+	}
+
+	if c.uriParams == nil {
+		c.uriParams = make(map[string]string, len(matches)-1)
+	}
+
+	// Note: If the regex does not have named groups, we use numeric keys: "0", "1", etc.
+	for i, val := range matches[1:] {
+		if i >= 0 && i < len(c.uriParamsList) {
+			c.uriParams[c.uriParamsList[i]] = val
+		}
+
+	}
+}
+
+func (h *HttpContext[TIdentifier]) GetIdentifier() *TIdentifier {
+	if ret, ok := h.Identifier.(*TIdentifier); ok {
+		return ret
+	} else {
+		return nil
+	}
+}
+
+type ContextPool[T any] struct {
+	pool sync.Pool
+}
+
+func newContextPool[T any]() *ContextPool[T] {
+	return &ContextPool[T]{
+		pool: sync.Pool{
+			New: func() any {
+				return new(HttpContext[T])
+			},
+		},
+	}
+}
+
+func (p *ContextPool[T]) get() *HttpContext[T] {
+	return p.pool.Get().(*HttpContext[T])
+}
+
+func (p *ContextPool[T]) put(ctx *HttpContext[T]) {
+	p.pool.Put(ctx)
+}
+
 type HttpError struct {
 	Code HTTPErrorCode
 	Data any
@@ -30,6 +156,8 @@ type swaggerInfoItem struct {
 	HttpMethod                       string
 	IsHasFileUpload                  bool
 	listOfIndexFieldIsFormUploadFile []int
+	isRequireAuth                    bool
+	uriInfo                          inspectUriInfo
 }
 
 var handlerMapping = map[string]func(w http.ResponseWriter, r *http.Request){}
@@ -120,7 +248,7 @@ func parseFormBody[TData any](w http.ResponseWriter, r *http.Request, uri string
 	// Iterate over struct fields
 	for i := 0; i < dataType.NumField(); i++ {
 		field := dataType.Field(i)
-		formTag := field.Tag.Get("form")
+		formTag := field.Tag.Get("json")
 
 		// Use field name if 'form' tag is missing
 		if formTag == "" {
@@ -178,7 +306,7 @@ func parseFormBody[TData any](w http.ResponseWriter, r *http.Request, uri string
 // parseMuitPartFormData parses 'multipart/form-data' body into struct TData,
 // handling both regular fields and file uploads (*multipart.FileHeader).
 // TData fields must use `form:"field_name"` tags for mapping.
-func parseMuitPartFormData[TData any](r *http.Request, uri string, maxUploadMemory int64) (TData, error) {
+func parseMuitPartFormData[TData any](r *http.Request, maxUploadMemory int64) (TData, error) {
 	var data TData
 	zeroValue := *new(TData) // Zero value of TData
 
@@ -283,14 +411,48 @@ func parseMuitPartFormData[TData any](r *http.Request, uri string, maxUploadMemo
 	return data, nil
 }
 
-func newControllerInstance[TController any]() *TController {
-	return reflect.New(reflect.TypeFor[TController]()).Interface().(*TController)
+type initNewControllerInstance[TController any] struct {
+	val  *TController
+	err  error
+	once sync.Once
 }
 
-type EmptyBody struct{}
-type HttpGet[TResponse any] struct {
-	Data TResponse
+var initNewControllerInstanceCache sync.Map
+
+func newControllerInstance[TController any]() (*TController, error) {
+	a, _ := initNewControllerInstanceCache.LoadOrStore(reflect.TypeFor[TController](), &initNewControllerInstance[TController]{})
+	init := a.(*initNewControllerInstance[TController])
+	init.once.Do(func() {
+		retIntance := reflect.New(reflect.TypeFor[TController]()).Interface().(*TController)
+		//find New function of *TTController
+		for i := 0; i < reflect.TypeFor[*TController]().NumMethod(); i++ {
+			if reflect.TypeFor[*TController]().Method(i).Name == "New" {
+				out := reflect.TypeFor[*TController]().Method(i).Func.Call([]reflect.Value{reflect.ValueOf(retIntance)})
+				if len(out) > 0 {
+					finalOut := out[len(out)-1]
+					if finalOut.Interface() != nil {
+						if err, ok := finalOut.Interface().(error); ok {
+
+							init.err = err
+							return
+						}
+					}
+				}
+			}
+		}
+		init.val = retIntance
+
+	})
+	if init.err != nil {
+		initNewControllerInstanceCache.Delete(reflect.TypeFor[TController]())
+		return nil, init.err
+	}
+	return init.val, nil
 }
+
+// type HttpGet[TResponse any] struct {
+// 	Data TResponse
+// }
 
 func getAllFieldsIsFileUpload[TRquest any]() []int {
 	ret := []int{}
@@ -309,8 +471,70 @@ func getAllFieldsIsFileUpload[TRquest any]() []int {
 		return nil
 	}
 }
-func HandlerPost[TController any, TData any, TResponse any](uriHandler string, fn func(controllerInstance *TController, ctx *HttpContext, data TData) (TResponse, error)) {
-	uri := fmt.Sprintf("%s/%s", reflect.TypeFor[TController]().Name(), uriHandler)
+
+// check TTypeCheck is a certain type
+// TTypeCheck is a certain struct not any
+// check TTypeCheck is a struct (used as an identifier/context), but not 'any'
+// Returns: true if TTypeCheck is a struct, false if TTypeCheck is 'any' or another basic type.
+func isSpecificType[TTypeCheck any]() bool {
+	t := reflect.TypeFor[TTypeCheck]()
+
+	// Nếu kiểu là 'interface' (tức là 'any'), chúng ta coi là không có yêu cầu Auth cụ thể.
+	if t.Kind() == reflect.Interface {
+		return false // isRequieAuth[any] -> false
+	}
+
+	// Nếu kiểu là 'struct', chúng ta coi là có yêu cầu Auth cụ thể.
+	if t.Kind() == reflect.Struct {
+		return true // isRequieAuth[struct{...}] -> true
+	}
+
+	// Các kiểu khác (string, int, v.v.)
+	return false
+}
+
+type cacheSetAuthKey struct {
+	ControllerType reflect.Type
+	IdentifierType reflect.Type
+}
+type OKUser struct {
+}
+
+var cacheSetAuth = map[any]any{}
+
+func SetAuth[TController any, TIdentifier any](controller *TController, fn func(ctx *HttpContext[TIdentifier]) error) {
+	cacheSetAuth[*controller] = fn
+	//cacheSetAuth[*controller] = fn
+}
+func callAuth[TController any, TIdentifier any](c *TController, ctx *HttpContext[TIdentifier]) error {
+	fn, ok := cacheSetAuth[*c]
+	if !ok {
+		return &HttpError{
+			Code: http.StatusUnauthorized,
+			Data: map[string]string{"error": "require login"},
+		}
+	}
+
+	if fx, ok := fn.(func(ctx *HttpContext[TIdentifier]) error); ok {
+		err := fx(ctx)
+		if err != nil {
+			return err
+		}
+		return nil
+	} else {
+		return &HttpError{
+			Code: http.StatusUnauthorized,
+			Data: map[string]string{"error": "require login"},
+		}
+	}
+
+}
+
+var mapControllerInstance = map[string]any{}
+
+func HandlerPost[TController any, TIdentifier any, TData any, TResponse any](uriHandler string, fn func(controllerInstance *TController, ctx *HttpContext[TIdentifier], data TData) (TResponse, error)) {
+
+	uri := fmt.Sprintf("%s/%s", strings.ToLower(reflect.TypeFor[TController]().Name()), uriHandler)
 	if _, ok := handlerMapping[uri]; ok {
 		panic(fmt.Sprintf("'%s is ready", uri))
 	}
@@ -320,6 +544,7 @@ func HandlerPost[TController any, TData any, TResponse any](uriHandler string, f
 	if allFieldsHasIsUpload != nil {
 		requestContentType = "multipart/form-data"
 	}
+	uriInfo := inspectUri(uri)
 	swaggerItem := swaggerInfoItem{
 		requestContentType:               requestContentType,
 		responseContentType:              "application/json",
@@ -329,33 +554,84 @@ func HandlerPost[TController any, TData any, TResponse any](uriHandler string, f
 		HttpMethod:                       "POST",
 		IsHasFileUpload:                  allFieldsHasIsUpload != nil,
 		listOfIndexFieldIsFormUploadFile: allFieldsHasIsUpload,
+		isRequireAuth:                    isSpecificType[TIdentifier](),
+		uriInfo:                          uriInfo,
 	}
-	swaggerInfo[uri] = swaggerItem
+	swaggerInfo[uriInfo.mainUri] = swaggerItem
 	if swaggerItem.requestBodyType.Kind() == reflect.Ptr {
 		swaggerItem.requestBodyType = swaggerItem.requestBodyType.Elem()
 	}
 	if swaggerItem.requestBodyType.Kind() == reflect.Ptr {
 		swaggerItem.requestBodyType = swaggerItem.requestBodyType.Elem()
 	}
-	hasBody := true
-	if reflect.TypeFor[TData]() == reflect.TypeFor[EmptyBody]() {
-		hasBody = false
+	requireAuth := isSpecificType[TIdentifier]()
+	hasBody := isSpecificType[TData]()
 
+	var initControllerError error
+	controllerInstance, initControllerError := newControllerInstance[TController]()
+	if initControllerError != nil {
+		mapControllerInstance[uri] = controllerInstance
 	}
-	controllerInstance := newControllerInstance[TController]()
 	isHasFileUpload := allFieldsHasIsUpload != nil
-	handlerMapping[uri] = func(w http.ResponseWriter, r *http.Request) {
+
+	handlerMapping[uriInfo.mainUri] = func(w http.ResponseWriter, r *http.Request) {
+
+		defer func() {
+			if r := recover(); r != nil {
+
+				fmt.Println(string(debug.Stack()))
+			}
+		}()
+		if initControllerError != nil {
+			if currentServer.IsReleaseMode {
+				defer log.Panicln(initControllerError)
+				writeJSONResponse(w, http.StatusInternalServerError, "server error")
+				return
+			} else {
+				panic(initControllerError)
+			}
+
+		}
 		if r.Method != "POST" {
 			writeJSONResponse(w, http.StatusBadGateway, map[string]string{"error": "Method is not allow"})
 			return
 		}
-		ctx := &HttpContext{
-			Req: r,
-			Res: w,
-			Uri: uri,
+		ctxPool := newContextPool[TIdentifier]()
+		ctx := ctxPool.get()
+		ctx.uriParamsList = uriInfo.uriParams
+		ctx.RootRouter = currentServer.BaseUrl
+		ctx.Req = r
+		ctx.Res = w
+		ctx.uriRegex = uriInfo.uriRegex
+		ctx.Uri = uriInfo.mainUri
+		if uriInfo.isRegex {
+			ctx.loadAllParams()
+		}
+		defer func() {
+			ctx.Reset()
+			ctxPool.put(ctx)
+		}()
+
+		if requireAuth {
+			err := callAuth(controllerInstance, ctx)
+			if err != nil {
+				if httpErr, ok := err.(*HttpError); ok {
+					// Return a custom HTTP error (e.g., 401, 400)
+					// The Data field is used as the JSON body
+					log.Printf("Handled HTTP Error for %s: %v", uri, httpErr)
+					writeJSONResponse(w, int(httpErr.Code), httpErr.Data)
+				} else {
+					// Return an unhandled server error (500 Internal Server Error)
+					log.Printf("Unhandled Server Error for %s: %v", uri, err)
+
+					// Return a generic error message for security reasons
+					writeJSONResponse(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
+				}
+				return
+			}
 		}
 		if isHasFileUpload {
-			data, err := parseMuitPartFormData[TData](r, uri, int64(currentServer.MaxUploadSize))
+			data, err := parseMuitPartFormData[TData](r, int64(currentServer.MaxUploadSize))
 			if err != nil {
 				if httpErr, ok := err.(*HttpError); ok {
 					// Return a custom HTTP error (e.g., 401, 400)
@@ -451,12 +727,12 @@ func HandlerPost[TController any, TData any, TResponse any](uriHandler string, f
 	}
 
 }
-func HandlerGet[TController any, TResponse any](uriHandler string, fn func(controllerInstance *TController, ctx *HttpContext) (TResponse, error)) {
-	uri := fmt.Sprintf("%s/%s", reflect.TypeFor[TController]().Name(), uriHandler)
+func HandlerGet[TController any, TIdentifier any, TResponse any](uriHandler string, fn func(controllerInstance *TController, ctx *HttpContext[TIdentifier]) (TResponse, error)) {
+	uri := fmt.Sprintf("%s/%s", strings.ToLower(reflect.TypeFor[TController]().Name()), uriHandler)
 	if _, ok := handlerMapping[uri]; ok {
 		panic(fmt.Sprintf("'%s is ready", uri))
 	}
-
+	uriInfo := inspectUri(uri)
 	swaggerItem := swaggerInfoItem{
 		requestContentType:  "application/json",
 		responseContentType: "application/json",
@@ -464,23 +740,70 @@ func HandlerGet[TController any, TResponse any](uriHandler string, fn func(contr
 		responseBodyType: reflect.TypeFor[TResponse](),
 		controllerType:   reflect.TypeFor[TController](),
 		HttpMethod:       "GET",
+		isRequireAuth:    isSpecificType[TIdentifier](),
+		uriInfo:          uriInfo,
 	}
-	swaggerInfo[uri] = swaggerItem
+	swaggerInfo[uriInfo.mainUri] = swaggerItem
 	var nilrequestBodyType reflect.Type
 	if swaggerItem.requestBodyType != nilrequestBodyType && swaggerItem.requestBodyType.Kind() == reflect.Ptr {
 		swaggerItem.requestBodyType = swaggerItem.requestBodyType.Elem()
 	}
-
-	controllerInstance := newControllerInstance[TController]()
+	var initControllerError error
+	controllerInstance, initControllerError := newControllerInstance[TController]()
+	requireAuth := isSpecificType[TIdentifier]()
 	handlerMapping[uri] = func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			if r := recover(); r != nil {
+
+				fmt.Println(string(debug.Stack()))
+			}
+		}()
+		if initControllerError != nil {
+			if currentServer.IsReleaseMode {
+				log.Panicln(initControllerError)
+				writeJSONResponse(w, http.StatusInternalServerError, "server error")
+				return
+			} else {
+				panic(initControllerError)
+			}
+		}
 		if r.Method != "GET" {
 			writeJSONResponse(w, http.StatusBadGateway, map[string]string{"error": "Method is not allow"})
 			return
 		}
-		ctx := &HttpContext{
-			Req: r,
-			Res: w,
-			Uri: uri,
+
+		ctxPool := newContextPool[TIdentifier]()
+		ctx := ctxPool.get()
+		ctx.uriParamsList = uriInfo.uriParams
+		ctx.RootRouter = currentServer.BaseUrl
+		ctx.Req = r
+		ctx.Res = w
+		ctx.uriRegex = uriInfo.uriRegex
+		ctx.Uri = uriInfo.mainUri
+		if uriInfo.isRegex {
+			ctx.loadAllParams()
+		}
+		defer func() {
+			ctx.Reset()
+			ctxPool.put(ctx)
+		}()
+		if requireAuth {
+			err := callAuth(controllerInstance, ctx)
+			if err != nil {
+				if httpErr, ok := err.(*HttpError); ok {
+					// Return a custom HTTP error (e.g., 401, 400)
+					// The Data field is used as the JSON body
+					log.Printf("Handled HTTP Error for %s: %v", uri, httpErr)
+					writeJSONResponse(w, int(httpErr.Code), httpErr.Data)
+				} else {
+					// Return an unhandled server error (500 Internal Server Error)
+					log.Printf("Unhandled Server Error for %s: %v", uri, err)
+
+					// Return a generic error message for security reasons
+					writeJSONResponse(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
+				}
+				return
+			}
 		}
 		res, err := fn(controllerInstance, ctx)
 		if err != nil {
@@ -504,8 +827,12 @@ func HandlerGet[TController any, TResponse any](uriHandler string, fn func(contr
 
 }
 
-func HandlerForm[TController any, TData any, TResponse any](uriHandler string, fn func(controllerInstance *TController, ctx *HttpContext, data TData) (TResponse, error)) {
-	uri := fmt.Sprintf("%s/%s", reflect.TypeFor[TController]().Name(), uriHandler)
+func HandlerForm[TController any, TIdentifier any, TData any, TResponse any](
+	uriHandler string,
+	fn func(controllerInstance *TController, ctx *HttpContext[TIdentifier], data TData) (TResponse, error)) {
+
+	uri := fmt.Sprintf("%s/%s", strings.ToLower(reflect.TypeFor[TController]().Name()), uriHandler)
+	uriInfo := inspectUri(uri)
 	if _, ok := handlerMapping[uri]; ok {
 		panic(fmt.Sprintf("'%s is ready", uri))
 	}
@@ -517,29 +844,73 @@ func HandlerForm[TController any, TData any, TResponse any](uriHandler string, f
 		responseBodyType:    reflect.TypeFor[TResponse](),
 		controllerType:      reflect.TypeFor[TController](),
 		HttpMethod:          "FORM_POST",
+		isRequireAuth:       isSpecificType[TIdentifier](),
+		uriInfo:             uriInfo,
 	}
-	swaggerInfo[uri] = swaggerItem
+	swaggerInfo[uriInfo.mainUri] = swaggerItem
 	if swaggerItem.requestBodyType.Kind() == reflect.Ptr {
 		swaggerItem.requestBodyType = swaggerItem.requestBodyType.Elem()
 	}
 	if swaggerItem.requestBodyType.Kind() == reflect.Ptr {
 		swaggerItem.requestBodyType = swaggerItem.requestBodyType.Elem()
 	}
-	hasBody := true
-	if reflect.TypeFor[TData]() == reflect.TypeFor[EmptyBody]() {
-		hasBody = false
-
-	}
-	controllerInstance := newControllerInstance[TController]()
+	hasBody := isSpecificType[TData]()
+	var initControllerError error
+	controllerInstance, initControllerError := newControllerInstance[TController]()
+	requireAuth := isSpecificType[TIdentifier]()
 	handlerMapping[uri] = func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			if r := recover(); r != nil {
+
+				fmt.Println(string(debug.Stack())) // debug.Stack() trả về []byte chứa toàn bộ stack trace
+			}
+		}()
+
+		if initControllerError != nil {
+			if currentServer.IsReleaseMode {
+				log.Panicln(initControllerError)
+				writeJSONResponse(w, http.StatusInternalServerError, "server error")
+				return
+			} else {
+				panic(initControllerError)
+			}
+		}
 		if r.Method != "POST" {
 			writeJSONResponse(w, http.StatusBadGateway, map[string]string{"error": "Method is not allow"})
 			return
 		}
-		ctx := &HttpContext{
-			Req: r,
-			Res: w,
-			Uri: uri,
+		ctxPool := newContextPool[TIdentifier]()
+		ctx := ctxPool.get()
+		ctx.uriParamsList = uriInfo.uriParams
+		ctx.RootRouter = currentServer.BaseUrl
+		ctx.Req = r
+		ctx.Res = w
+		ctx.uriRegex = uriInfo.uriRegex
+		ctx.Uri = uriInfo.mainUri
+		if uriInfo.isRegex {
+			ctx.loadAllParams()
+		}
+		defer func() {
+			ctx.Reset()
+			ctxPool.put(ctx)
+		}()
+		if requireAuth {
+			err := callAuth(controllerInstance, ctx)
+			if err != nil {
+				if httpErr, ok := err.(*HttpError); ok {
+					// Return a custom HTTP error (e.g., 401, 400)
+					// The Data field is used as the JSON body
+					log.Printf("Handled HTTP Error for %s: %v", uri, httpErr)
+					writeJSONResponse(w, int(httpErr.Code), httpErr.Data)
+				} else {
+					// Return an unhandled server error (500 Internal Server Error)
+					log.Printf("Unhandled Server Error for %s: %v", uri, err)
+
+					// Return a generic error message for security reasons
+					writeJSONResponse(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
+				}
+				return
+			}
 		}
 		if hasBody {
 			data, err := parseFormBody[TData](w, r, uri)
@@ -600,5 +971,14 @@ func HandlerForm[TController any, TData any, TResponse any](uriHandler string, f
 			}
 		}
 	}
+
+}
+func GetHandler[TController any](uriHandler string) (http.HandlerFunc, error) {
+	var ret http.HandlerFunc
+	uri := fmt.Sprintf("%s/%s", strings.ToLower(reflect.TypeFor[TController]().Name()), uriHandler)
+	if fx, ok := handlerMapping[uri]; ok {
+		return fx, nil
+	}
+	return ret, fmt.Errorf("%s not found in %s", uriHandler, reflect.TypeFor[TController]().String())
 
 }

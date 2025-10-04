@@ -18,6 +18,30 @@ func (sb *swaggerBuild) createParamtersFromUriParams(handler webHandler) []swagg
 			})
 		}
 	}
+	if len(handler.uriInfo.uriParams) > 0 {
+		for _, param := range handler.uriInfo.uriParams {
+			ret = append(ret, swaggers3.Parameter{
+				Name:     param,
+				In:       "path",
+				Required: true,
+				Schema: &swaggers3.Schema{
+					Type: "string",
+				},
+			})
+		}
+	}
+	if len(handler.uriInfo.queryParams) > 0 {
+		for _, param := range handler.uriInfo.queryParams {
+			ret = append(ret, swaggers3.Parameter{
+				Name:     param,
+				In:       "query",
+				Required: true,
+				Schema: &swaggers3.Schema{
+					Type: "string",
+				},
+			})
+		}
+	}
 
 	return ret
 

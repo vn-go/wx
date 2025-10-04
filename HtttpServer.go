@@ -24,6 +24,8 @@ type htttpServer struct {
 	mws           []func(w http.ResponseWriter, r *http.Request, next http.HandlerFunc)
 	MaxBodySize   uint64
 	MaxUploadSize uint64
+	IsReleaseMode bool
+	uriParamList  []string
 }
 
 var currentServer *htttpServer

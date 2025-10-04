@@ -175,7 +175,12 @@ func (sb *swaggerBuild) LoadFromRoutes() *swaggerBuild {
 
 	}
 	for k, v := range swaggerInfo {
+		indexOfArgIsAuth := -1
+		if v.isRequireAuth {
+			indexOfArgIsAuth = 0
+		}
 		if v.HttpMethod == "GET" {
+
 			h := webHandler{
 				RoutePath: k,
 				ApiInfo: &handlerInfo{
@@ -183,10 +188,13 @@ func (sb *swaggerBuild) LoadFromRoutes() *swaggerBuild {
 					uri:                     k,
 					indexOfArgIsRequestBody: -1,
 					controllerTypeElem:      v.controllerType,
+					isAuth:                  v.isRequireAuth,
+					indexOfArgIsAuth:        indexOfArgIsAuth,
 				},
 				Method:      v.HttpMethod,
 				RequestType: v.requestContentType,
 				ResposeType: v.responseContentType,
+				uriInfo:     v.uriInfo,
 			}
 			handlerList = append(handlerList, h)
 		} else if v.HttpMethod == "FORM_POST" {
@@ -203,8 +211,11 @@ func (sb *swaggerBuild) LoadFromRoutes() *swaggerBuild {
 					controllerTypeElem:               v.controllerType,
 					isFormPost:                       v.IsHasFileUpload,
 					listOfIndexFieldIsFormUploadFile: v.listOfIndexFieldIsFormUploadFile,
+					isAuth:                           v.isRequireAuth,
+					indexOfArgIsAuth:                 indexOfArgIsAuth,
 				},
-				Method: "POST",
+				Method:  "POST",
+				uriInfo: v.uriInfo,
 			}
 			handlerList = append(handlerList, h)
 		} else {
@@ -217,10 +228,14 @@ func (sb *swaggerBuild) LoadFromRoutes() *swaggerBuild {
 					controllerTypeElem:               v.controllerType,
 					isFormPost:                       v.IsHasFileUpload,
 					listOfIndexFieldIsFormUploadFile: v.listOfIndexFieldIsFormUploadFile,
+					isAuth:                           v.isRequireAuth,
+					fieldIndexOfAuth:                 nil,
+					indexOfArgIsAuth:                 indexOfArgIsAuth,
 				},
 				Method:      v.HttpMethod,
 				RequestType: v.requestContentType,
 				ResposeType: v.responseContentType,
+				uriInfo:     v.uriInfo,
 			}
 			handlerList = append(handlerList, h)
 		}

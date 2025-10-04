@@ -23,6 +23,45 @@ func (m *Media) Auth(ctx *wx.Handler, data wx.Form[struct {
 }]) (string, error) {
 	return "heelo", nil
 }
+func (media *Media) Files(ctx *struct {
+	wx.Handler `route:"@/{*FilePath};method:get"`
+	FilePath   string
+}) error {
+	// uriOfViewFileHandler, err := wx.GetUriOfHandler[Media]("Files")
+	// if err != nil {
+	// 	return "", err
+	// }
+	// rootUrl := ctx.Handler().GetAbsRootUri() + uriOfViewFileHandler
+	// filePath := media.RootDir + "/" + ctx.FilePath
+	return ctx.Handler().StreamingFile(`D:\code\go\wx\wx\cmd\controller.go`)
+	//return ctx.FilePath, nil
+}
+func (media *Media) Files2(ctx *struct {
+	wx.Handler `route:"@/{FilePath}/{filename};method:get"`
+	FilePath   string
+}) error {
+	// uriOfViewFileHandler, err := wx.GetUriOfHandler[Media]("Files")
+	// if err != nil {
+	// 	return "", err
+	// }
+	// rootUrl := ctx.Handler().GetAbsRootUri() + uriOfViewFileHandler
+	// filePath := media.RootDir + "/" + ctx.FilePath
+	return ctx.Handler().StreamingFile(`D:\code\go\wx\wx\cmd\controller.go`)
+	//return ctx.FilePath, nil
+}
+func (media *Media) Files3(ctx *struct {
+	wx.Handler `route:"@/{FilePath}/{filename}?test={code};method:get"`
+	FilePath   string
+}) error {
+	// uriOfViewFileHandler, err := wx.GetUriOfHandler[Media]("Files")
+	// if err != nil {
+	// 	return "", err
+	// }
+	// rootUrl := ctx.Handler().GetAbsRootUri() + uriOfViewFileHandler
+	// filePath := media.RootDir + "/" + ctx.FilePath
+	return ctx.Handler().StreamingFile(`D:\code\go\wx\wx\cmd\controller.go`)
+	//return ctx.FilePath, nil
+}
 func init() {
 	(&wx.Authenticate[User]{}).Verify(func(ctx wx.Handler) (*User, error) {
 

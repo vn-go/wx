@@ -375,6 +375,13 @@ func (mt *mockType) FormRequest(method, url string, data interface{}) (*http.Req
 		return mt.createUploadFile(url, data, &metaMockFile{})
 	}
 }
+func (mt *mockType) NewGetRequest(url string) (*http.Request, error) {
+	ret, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+	return ret, nil
+}
 func (mt *mockType) JsonRequest(method, url string, data interface{}) (*http.Request, error) {
 	info, found := mt.hasUploadFile(data)
 	if found {
