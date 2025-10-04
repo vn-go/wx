@@ -146,3 +146,10 @@ git tag -a v0.1.31 -m "support auth with ApiPath"
 git push origin v0.1.31
 git push origin --tags
 #go get github.com/vn-go/wx@v0.1.31
+--
+git add .
+git commit -m "make new handler web"
+git tag -a v0.2.0 -m "make new handler web"
+git push origin v0.2.0
+git push origin --tags
+#go get github.com/vn-go/wx@v0.2.0
