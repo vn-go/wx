@@ -25,7 +25,7 @@ type HttpContext[TIdentifier any] struct {
 	Req        *http.Request
 	Res        http.ResponseWriter
 	Uri        string
-	Identifier any
+	Identifier TIdentifier
 	//fix so need'nt clear when put to sync.pool
 	rootAbsUrl string
 	//fix so need'nt clear when put to sync.pool
@@ -42,10 +42,11 @@ type HttpContext[TIdentifier any] struct {
 }
 
 func (c *HttpContext[TIdentifier]) Reset() {
+	var nilIdentifier TIdentifier
 	c.Req = nil
 	c.Res = nil
 	c.Uri = ""
-	c.Identifier = nil
+	c.Identifier = nilIdentifier
 	//c.isRegex = false
 	c.queryParams = map[string]string{}
 	c.uriParams = map[string]string{}
@@ -116,11 +117,7 @@ func (c *HttpContext[TIdentifier]) loadAllParams() {
 }
 
 func (h *HttpContext[TIdentifier]) GetIdentifier() *TIdentifier {
-	if ret, ok := h.Identifier.(*TIdentifier); ok {
-		return ret
-	} else {
-		return nil
-	}
+	return &h.Identifier
 }
 
 type ContextPool[T any] struct {
@@ -508,15 +505,29 @@ func isSpecificType[TTypeCheck any]() bool {
 	return false
 }
 
-type cacheSetAuthKey struct {
-	ControllerType reflect.Type
-	IdentifierType reflect.Type
-}
+//	type cacheSetAuthKey struct {
+//		ControllerType reflect.Type
+//		IdentifierType reflect.Type
+//	}
 type OKUser struct {
 }
 
 var cacheSetAuth = map[any]any{}
 
+/*
+Example:
+
+	wx.SetAuth(&Roles{}, func(ctx *wx.HttpContext[core.UserClaims]) error {
+			ctx.Identifier = core.UserClaims{
+				Username:    user.Username,
+				UserId:      user.UserId,
+				ClaimId:     user.Id,
+				Tenant:      tenant,
+				IsUpperUser: user.IsSysAdmin,
+			}
+			return nil
+		})
+*/
 func SetAuth[TController any, TIdentifier any](controller *TController, fn func(ctx *HttpContext[TIdentifier]) error) {
 	cacheSetAuth[*controller] = fn
 	//cacheSetAuth[*controller] = fn
