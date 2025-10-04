@@ -1,6 +1,7 @@
 package wx
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -162,9 +163,25 @@ type swaggerInfoItem struct {
 
 var handlerMapping = map[string]func(w http.ResponseWriter, r *http.Request){}
 var swaggerInfo = map[string]swaggerInfoItem{}
+var jsonBufferPool = sync.Pool{
+	New: func() any { return new(bytes.Buffer) },
+}
+
+func writeJSONResponse(w http.ResponseWriter, statusCode int, data any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(statusCode)
+	buf := jsonBufferPool.Get().(*bytes.Buffer)
+	buf.Reset()
+	json.NewEncoder(buf).Encode(data)
+	_, err := w.Write(buf.Bytes())
+	if err != nil {
+		log.Printf("Error writing JSON response: %v", err)
+	}
+	jsonBufferPool.Put(buf)
+}
 
 // writeJSONResponse is a utility function to send a JSON response
-func writeJSONResponse(w http.ResponseWriter, statusCode int, data any) {
+func writeJSONResponseOld(w http.ResponseWriter, statusCode int, data any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
 	if data != nil {
