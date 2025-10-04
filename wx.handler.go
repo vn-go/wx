@@ -2,7 +2,6 @@ package wx
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -168,89 +167,57 @@ var swaggerInfo = map[string]swaggerInfoItem{}
 var jsonBufferPool = sync.Pool{
 	New: func() any { return new(bytes.Buffer) },
 }
-var jsonLib = jsoniter.ConfigCompatibleWithStandardLibrary
+var jsonLib = jsoniter.ConfigFastest
 
-func writeJSONResponse(w http.ResponseWriter, statusCode int, data any) {
+func writeJSONResponse(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	stream := jsoniter.NewStream(jsoniter.ConfigFastest, w, 512)
+	defer jsonLib.ReturnStream(stream)
+	stream.WriteVal(v)
+	stream.Flush()
+	// stream := jsonLib.BorrowStream(w)
 
-	bff, err := jsonLib.Marshal(data)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("server error"))
-		log.Printf("Error writing JSON response: %v", err)
-		return
-	}
-
-	_, err = w.Write(bff)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("server error"))
-		log.Printf("Error writing JSON response: %v", err)
-		return
-	}
-	w.WriteHeader(statusCode)
-	// buf := jsonBufferPool.Get().(*bytes.Buffer)
-	// buf.Reset()
-	// json.NewEncoder(buf).Encode(data)
-	// _, err := w.Write(buf.Bytes())
-	// if err != nil {
-	// 	log.Printf("Error writing JSON response: %v", err)
-	// }
-	// jsonBufferPool.Put(buf)
-}
-func writeJSONResponse1(w http.ResponseWriter, statusCode int, data any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(statusCode)
-	buf := jsonBufferPool.Get().(*bytes.Buffer)
-	buf.Reset()
-	json.NewEncoder(buf).Encode(data)
-	_, err := w.Write(buf.Bytes())
-	if err != nil {
-		log.Printf("Error writing JSON response: %v", err)
-	}
-	jsonBufferPool.Put(buf)
+	// stream.WriteVal(v)
+	// stream.Flush() // ghi ra trực tiếp ResponseWriter
 }
 
-// writeJSONResponse is a utility function to send a JSON response
-func writeJSONResponseOld(w http.ResponseWriter, statusCode int, data any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(statusCode)
-	if data != nil {
-		if err := json.NewEncoder(w).Encode(data); err != nil {
-			log.Printf("Error writing JSON response: %v", err)
-		}
-	}
-}
 func parseJsonBody[TData any](w http.ResponseWriter, r *http.Request, uri string) (TData, error) {
 	var data TData
-	// 2. Deserialize request body into `data`
-	// Limit the request body size (e.g., 1MB)
+
+	// 1️⃣ Giới hạn kích thước body
 	r.Body = http.MaxBytesReader(w, r.Body, int64(currentServer.MaxBodySize))
-	decoder := json.NewDecoder(r.Body)
-	decoder.DisallowUnknownFields() // Reject unknown fields in the JSON body
-	if err := decoder.Decode(&data); err != nil {
-		// Handle common JSON parsing errors
+
+	// 2️⃣ Đọc toàn bộ body vào buffer (nhỏ, tránh syscall nhiều)
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		var ret TData
+		return ret, &HttpError{
+			Code: http.StatusBadRequest,
+			Data: map[string]string{"error": "Cannot read request body"},
+		}
+	}
+
+	// 3️⃣ Parse JSON bằng json-iterator (nhanh hơn 2–3 lần stdlib)
+	if err := jsonLib.Unmarshal(body, &data); err != nil {
 		log.Printf("JSON decode error for URI %s: %v", uri, err)
 		var errMsg string
-		if err == io.EOF {
+		switch {
+		case err == io.EOF:
 			errMsg = "Request body must not be empty"
-		} else if syntaxErr, ok := err.(*json.SyntaxError); ok {
-			errMsg = fmt.Sprintf("Invalid JSON at offset %d", syntaxErr.Offset)
-		} else if unmarshalErr, ok := err.(*json.UnmarshalTypeError); ok {
-			errMsg = fmt.Sprintf("Invalid type for field '%s'", unmarshalErr.Field)
-		} else {
-			errMsg = "Invalid request format"
+
+		default:
+			errMsg = fmt.Sprintf("Invalid request format: %v", err)
 		}
+
 		var ret TData
 		return ret, &HttpError{
 			Code: http.StatusBadRequest,
 			Data: map[string]string{"error": errMsg},
 		}
-		// Return 400 Bad Request
-
 	}
-	return data, nil
 
+	return data, nil
 }
 
 // parseFormBody parses 'application/x-www-form-urlencoded' body into struct TData.
