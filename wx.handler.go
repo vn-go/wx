@@ -14,6 +14,8 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+
+	jsoniter "github.com/json-iterator/go"
 )
 
 type IdentifierInfo[TIdentifier any] struct {
@@ -166,8 +168,37 @@ var swaggerInfo = map[string]swaggerInfoItem{}
 var jsonBufferPool = sync.Pool{
 	New: func() any { return new(bytes.Buffer) },
 }
+var jsonLib = jsoniter.ConfigCompatibleWithStandardLibrary
 
 func writeJSONResponse(w http.ResponseWriter, statusCode int, data any) {
+	w.Header().Set("Content-Type", "application/json")
+
+	bff, err := jsonLib.Marshal(data)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("server error"))
+		log.Printf("Error writing JSON response: %v", err)
+		return
+	}
+
+	_, err = w.Write(bff)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("server error"))
+		log.Printf("Error writing JSON response: %v", err)
+		return
+	}
+	w.WriteHeader(statusCode)
+	// buf := jsonBufferPool.Get().(*bytes.Buffer)
+	// buf.Reset()
+	// json.NewEncoder(buf).Encode(data)
+	// _, err := w.Write(buf.Bytes())
+	// if err != nil {
+	// 	log.Printf("Error writing JSON response: %v", err)
+	// }
+	// jsonBufferPool.Put(buf)
+}
+func writeJSONResponse1(w http.ResponseWriter, statusCode int, data any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
 	buf := jsonBufferPool.Get().(*bytes.Buffer)
