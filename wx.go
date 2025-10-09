@@ -14,16 +14,36 @@ func Routes(baseUri string, ins ...any) error {
 
 var Mock = &mockType{}
 
+type initMakeHandlerFromMethod struct {
+	val  *handlerInfo
+	err  error
+	once sync.Once
+}
+
+var initMakeHandlerFromMethodCache sync.Map
+
 func MakeHandlerFromMethod[T any](methodName string) (*handlerInfo, error) {
-	mt, ok := utils.GetMethodByName(reflect.TypeFor[T](), methodName)
-	if !ok {
-		return nil, fmt.Errorf("method %s not found or not public in %s", methodName, reflect.TypeFor[T]().String())
+	a, _ := initMakeHandlerFromMethodCache.LoadOrStore(methodName, &initMakeHandlerFromMethod{})
+	i := a.(*initMakeHandlerFromMethod)
+	i.once.Do(func() {
+		mt, ok := utils.GetMethodByName(reflect.TypeFor[T](), methodName)
+		if !ok {
+			i.err = fmt.Errorf("method %s not found or not public in %s", methodName, reflect.TypeFor[T]().String())
+			return
+		}
+		ret, err := utils.Uri.MakeHandlerFromMethod(mt)
+		if err != nil {
+			i.err = err
+		}
+		i.val = ret
+
+	})
+	if i.err != nil {
+		initMakeHandlerFromMethodCache.Delete(methodName)
+		return nil, i.err
 	}
-	ret, err := utils.Uri.MakeHandlerFromMethod(mt)
-	if err != nil {
-		return nil, err
-	}
-	return ret, nil
+	return i.val, nil
+
 }
 func getMethodByName[T any](name string) *reflect.Method {
 
