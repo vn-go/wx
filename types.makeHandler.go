@@ -3,13 +3,16 @@ package wx
 import (
 	"context"
 	"encoding/json"
-
+	sysErr "errors"
 	"fmt"
+	"io"
 	"mime/multipart"
 	"net/http"
 	"reflect"
 	"strings"
 	"sync"
+
+	jsonIterator "github.com/json-iterator/go"
 
 	"github.com/google/uuid"
 	"github.com/vn-go/wx/internal"
@@ -379,6 +382,8 @@ func (info *handlerInfo) CreateHandlerValue(r *http.Request, w http.ResponseWrit
 
 }
 
+var jsonNew = jsonIterator.ConfigCompatibleWithStandardLibrary
+
 func (info *handlerInfo) GetBodyValue(bodyData reflect.Value, r *http.Request, contentType string) (reflect.Value, error) {
 	//"multipart/form-data; boundary=bc93ed97d895d9ff5f8eb8f994205bc3f8184e4f5d0668de8791448fe447"
 
@@ -403,9 +408,20 @@ func (info *handlerInfo) GetBodyValue(bodyData reflect.Value, r *http.Request, c
 
 	if r.Body != nil && r.Body != http.NoBody {
 		defer r.Body.Close() // <-- auto close after read body of request
-		if err := json.NewDecoder(r.Body).Decode(bodyData.Interface()); err != nil {
-
-			return reflect.Value{}, err
+		if err := jsonNew.NewDecoder(r.Body).Decode(bodyData.Interface()); err != nil {
+			var msg string
+			switch {
+			case sysErr.Is(err, io.ErrUnexpectedEOF):
+				msg = "Malformed JSON (unexpected end of data)"
+			case sysErr.Is(err, io.EOF):
+				msg = "Empty request body or invalid JSON"
+			default:
+				msg = "Invalid or malformed JSON body"
+			}
+			return reflect.Value{}, &HttpError{
+				Code: http.StatusBadRequest,
+				Data: msg,
+			}
 		}
 	} else if info.typeOfRequestBody.Kind() == reflect.Struct {
 

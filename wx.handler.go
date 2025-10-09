@@ -505,13 +505,6 @@ func isSpecificType[TTypeCheck any]() bool {
 	return false
 }
 
-//	type cacheSetAuthKey struct {
-//		ControllerType reflect.Type
-//		IdentifierType reflect.Type
-//	}
-type OKUser struct {
-}
-
 var cacheSetAuth = map[any]any{}
 
 /*
