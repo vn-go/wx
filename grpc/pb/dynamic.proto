@@ -5,12 +5,15 @@ option go_package = "grpc-dynamic/pb";
 
 message GrpcCall {
   string grpc_endpoint = 1;
-  bytes args = 2;
+  string endcoder =2;
+  bytes args = 3;
+  
 }
 
 message GrpcResult {
   bytes result = 1;
   string error = 2;
+ 
 }
 
 service DynamicService {

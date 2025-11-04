@@ -7,12 +7,11 @@
 package pb
 
 import (
+	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
+	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
-
-	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
-	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 )
 
 const (
@@ -25,7 +24,8 @@ const (
 type GrpcCall struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	GrpcEndpoint  string                 `protobuf:"bytes,1,opt,name=grpc_endpoint,json=grpcEndpoint,proto3" json:"grpc_endpoint,omitempty"`
-	Args          []byte                 `protobuf:"bytes,2,opt,name=args,proto3" json:"args,omitempty"`
+	Endcoder      string                 `protobuf:"bytes,2,opt,name=endcoder,proto3" json:"endcoder,omitempty"`
+	Args          []byte                 `protobuf:"bytes,3,opt,name=args,proto3" json:"args,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -63,6 +63,13 @@ func (*GrpcCall) Descriptor() ([]byte, []int) {
 func (x *GrpcCall) GetGrpcEndpoint() string {
 	if x != nil {
 		return x.GrpcEndpoint
+	}
+	return ""
+}
+
+func (x *GrpcCall) GetEndcoder() string {
+	if x != nil {
+		return x.Endcoder
 	}
 	return ""
 }
@@ -130,10 +137,11 @@ var File_dynamic_proto protoreflect.FileDescriptor
 
 const file_dynamic_proto_rawDesc = "" +
 	"\n" +
-	"\rdynamic.proto\x12\adynamic\"C\n" +
+	"\rdynamic.proto\x12\adynamic\"_\n" +
 	"\bGrpcCall\x12#\n" +
-	"\rgrpc_endpoint\x18\x01 \x01(\tR\fgrpcEndpoint\x12\x12\n" +
-	"\x04args\x18\x02 \x01(\fR\x04args\":\n" +
+	"\rgrpc_endpoint\x18\x01 \x01(\tR\fgrpcEndpoint\x12\x1a\n" +
+	"\bendcoder\x18\x02 \x01(\tR\bendcoder\x12\x12\n" +
+	"\x04args\x18\x03 \x01(\fR\x04args\":\n" +
 	"\n" +
 	"GrpcResult\x12\x16\n" +
 	"\x06result\x18\x01 \x01(\fR\x06result\x12\x14\n" +

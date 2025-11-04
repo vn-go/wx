@@ -5,6 +5,8 @@ import (
 	"encoding/gob"
 	"fmt"
 	"reflect"
+
+	"github.com/vn-go/wx"
 )
 
 // ======================
@@ -88,29 +90,39 @@ func Test(a, b int) int {
 }
 
 // ======================
-//  Mô phỏng client gọi
+//
+//	Mô phỏng client gọi
+//
 // ======================
+// Implement service
+type user struct {
+}
 
+func (u *user) Login(data struct{ Username, Password string }) (bool, error) {
+	return true, nil
+}
+
+type UserController struct {
+}
+
+func (u *UserController) Login(h *wx.Handler, data struct {
+	Username string
+	Password string
+}) (bool, error) {
+	return true, nil
+}
 func main() {
-	// Đăng ký endpoint
-	GrpcEndPointAdd("Test", Test)
 
-	// Client chuẩn bị args
-	argsData, err := EncodeArgs(5, 7)
-	if err != nil {
-		panic(err)
-	}
+	go func() {
+		server := wx.NewGrpcTPCServer()
+		server.AddServices(&user{})
+		server.Start(":50051")
+	}()
+	wx.Routes("/api", &UserController{})
+	server := wx.NewHtttpServer("/api", "8080", "0.0.0.0")
+	server.IsReleaseMode = true
+	swagger := wx.CreateSwagger(server, "/docs")
 
-	call := &GrpcCall{
-		GrpcEndPoint: "Test",
-		Args:         argsData,
-	}
-
-	// Server xử lý
-	result, err := call.Call()
-	if err != nil {
-		panic(err)
-	}
-
-	fmt.Println("Kết quả trả về:", result) // Kết quả trả về: 12
+	swagger.Build()
+	server.Start()
 }

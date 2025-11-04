@@ -1,0 +1,103 @@
+PS D:\code\go\wx\wx\grpc\pb> k6 run grpc.js
+
+         /\      Grafana   /‾‾/  
+    /\  /  \     |\  __   /  /   
+   /  \/    \    | |/ /  /   ‾‾\ 
+  /          \   |   (  |  (‾)  |
+ / __________ \  |_|\_\  \_____/ 
+
+     execution: local
+        script: grpc.js
+        output: -
+
+     scenarios: (100.00%) 1 scenario, 100 max VUs, 1m0s max duration (incl. graceful stop):
+              * default: 100 looping VUs for 30s (gracefulStop: 30s)
+
+
+
+  █ TOTAL RESULTS
+
+    checks_total.......................: 68286   2273.327416/s
+    checks_succeeded...................: 100.00% 68286 out of 68286
+    checks_failed......................: 0.00%   0 out of 68286
+
+    ✓ status is OK
+    ✓ no error
+    ✓ result received
+
+    EXECUTION
+    iteration_duration.....................: avg=131.83ms min=1.7ms med=128.01ms max=473.5ms p(90)=196.3ms p(95)=247.36ms
+    iterations.............................: 22762  757.775805/s
+    vus....................................: 100    min=100      max=100
+    vus_max................................: 100    min=100      max=100
+
+    NETWORK
+    data_received..........................: 3.4 MB 114 kB/s
+    data_sent..............................: 7.9 MB 265 kB/s
+
+    GRPC
+    grpc_req_duration......................: avg=538.36µs min=0s    med=519µs    max=16.98ms p(90)=1.08ms  p(95)=1.56ms
+
+
+
+
+running (0m30.0s), 000/100 VUs, 22762 complete and 0 interrupted iterations
+default ✓ [======================================] 100 VUs  30s
+PS D:\code\go\wx\wx\grpc\pb>
+---
+PS D:\code\go\wx\wx\grpc\pb> k6 run http.js
+
+         /\      Grafana   /‾‾/  
+    /\  /  \     |\  __   /  /   
+   /  \/    \    | |/ /  /   ‾‾\ 
+  /          \   |   (  |  (‾)  |
+ / __________ \  |_|\_\  \_____/ 
+
+     execution: local
+        script: http.js
+        output: -
+
+     scenarios: (100.00%) 1 scenario, 100 max VUs, 1m0s max duration (incl. graceful stop):
+              * default: 100 looping VUs for 30s (gracefulStop: 30s)
+
+
+
+  █ THRESHOLDS
+
+    http_req_duration
+    ✓ 'p(95)<100' p(95)=4.46ms
+
+    http_req_failed
+    ✓ 'rate<0.01' rate=0.00%
+
+
+  █ TOTAL RESULTS
+
+    checks_total.......................: 2402525 80076.762769/s
+    checks_succeeded...................: 100.00% 2402525 out of 2402525
+    checks_failed......................: 0.00%   0 out of 2402525
+
+    ✓ status is 200
+
+    HTTP
+    http_req_duration.......................................................: avg=1.14ms min=0s med=652.4µs max=34.31ms  p(90)=2.84ms p(95)=4.46ms
+      { expected_response:true }............................................: avg=1.14ms min=0s med=652.4µs max=34.31ms  p(90)=2.84ms p(95)=4.46ms
+    http_req_failed.........................................................: 0.00%   0 out of 2402525
+    http_reqs...............................................................: 2402525 80076.762769/s
+
+    EXECUTION
+    iteration_duration......................................................: avg=1.23ms min=0s med=754µs   max=316.71ms p(90)=3ms    p(95)=4.58ms
+    iterations..............................................................: 2402525 80076.762769/s
+    vus.....................................................................: 100     min=100          max=100
+    vus_max.................................................................: 100     min=100          max=100
+
+    NETWORK
+    data_received...........................................................: 269 MB  9.0 MB/s
+    data_sent...............................................................: 483 MB  16 MB/s
+
+
+
+                                                                                                                                                                 
+running (0m30.0s), 000/100 VUs, 2402525 complete and 0 interrupted iterations                                                                                    
+default ✓ [======================================] 100 VUs  30s                                                                                                  
+PS D:\code\go\wx\wx\grpc\pb> 

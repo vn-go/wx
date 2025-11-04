@@ -4,6 +4,8 @@ go 1.25.0
 
 require github.com/stretchr/testify v1.11.1
 
+require github.com/libp2p/go-reuseport v0.4.0 // indirect
+
 require (
 	github.com/json-iterator/go v1.1.12
 	github.com/modern-go/concurrent v0.0.0-20180228061459-e0a39a4cb421 // indirect
