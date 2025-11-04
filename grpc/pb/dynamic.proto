@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package dynamic;
+option go_package = "grpc-dynamic/pb"; 
+
+message GrpcCall {
+  string grpc_endpoint = 1;
+  bytes args = 2;
+}
+
+message GrpcResult {
+  bytes result = 1;
+  string error = 2;
+}
+
+service DynamicService {
+  rpc Invoke (GrpcCall) returns (GrpcResult);
+}
+//D:\code\protoc-33.0-win64\bin\protoc   --go_out=.   --go-grpc_out=.   --go_opt=paths=source_relative   --go-grpc_opt=paths=source_relative   dynamic.proto
