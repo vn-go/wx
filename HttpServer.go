@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
-	"sync"
 	"time"
 )
 
@@ -87,22 +86,20 @@ type keyHandler string
 
 var keyBeforeRequestCompleted = keyHandler("hack-before-request-completed")
 
-type initAfterHandler struct {
-	once sync.Once
-}
-
-var initAfterHandlerMap sync.Map
-var afterHandlers = []http.HandlerFunc{}
-
 func (s *httpServer) BeforeRequestCompleted(key string, w http.ResponseWriter, r *http.Request, fn http.HandlerFunc) (http.ResponseWriter, *http.Request) {
-	a, _ := initAfterHandlerMap.LoadOrStore(key, &initAfterHandler{})
-	i := a.(*initAfterHandler)
-	i.once.Do(func() {
-		afterHandlers = append(afterHandlers, fn)
 
-	})
-	ctx := context.WithValue(r.Context(), keyBeforeRequestCompleted, afterHandlers)
-	*r = *r.WithContext(ctx)
+	if fnList, ok := r.Context().Value(keyBeforeRequestCompleted).([]http.HandlerFunc); ok {
+		fnList = append(fnList, fn)
+		ctx := context.WithValue(r.Context(), keyBeforeRequestCompleted, fnList)
+		*r = *r.WithContext(ctx)
+	} else {
+		fnList = []http.HandlerFunc{fn}
+		ctx := context.WithValue(r.Context(), keyBeforeRequestCompleted, fnList)
+		*r = *r.WithContext(ctx)
+	}
+	// }
+	// ctx := context.WithValue(r.Context(), keyBeforeRequestCompleted, afterHandlers)
+	// *r = *r.WithContext(ctx)
 	return w, r
 
 }
