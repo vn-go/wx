@@ -123,6 +123,7 @@ func (h *handlerInfo) getAuth(valueOfHandler reflect.Value) (reflect.Value, erro
 	return ret, nil
 
 }
+
 func (h *handlerInfo) Handler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// defer func() {
@@ -132,6 +133,7 @@ func (h *handlerInfo) Handler() http.HandlerFunc {
 
 		// 	}
 		// }()
+
 		if r.Method != h.httpMethod {
 			w.WriteHeader(http.StatusMethodNotAllowed)
 			return
@@ -153,21 +155,41 @@ func (h *handlerInfo) Handler() http.HandlerFunc {
 
 				}
 				w.Header().Set("Content-Type", "application/json")
+				if fnList, ok := r.Context().Value(keyBeforeRequestCompleted).([]http.HandlerFunc); ok {
+					for i := len(fnList) - 1; i >= 0; i-- {
+						fn := fnList[i]
+						fn(w, r)
+					}
+				}
+
 				if err := json.NewEncoder(w).Encode(retData); err != nil {
 					h.catchError(w, Errors.NewServerError("Internal server error", err))
 				}
 			} else {
 				w.Header().Set("Content-Type", "application/json")
+
 				//write ret to
 				if ret[0].Kind() == reflect.Ptr {
 					ret[0] = ret[0].Elem()
 
 				}
 				if ret[0].IsValid() {
-					if err := json.NewEncoder(w).Encode(ret[0].Interface()); err != nil {
+					if fnList, ok := r.Context().Value(keyBeforeRequestCompleted).([]http.HandlerFunc); ok {
+						for i := len(fnList) - 1; i >= 0; i-- {
+							fn := fnList[i]
+							fn(w, r)
+						}
+					}
+					if err := json.NewEncoder(w).Encode(ret[0].Interface()); err != nil { // co cah nao bao http/net dung khoa header kg
 						h.catchError(w, Errors.NewServerError("Internal server error", err))
 					}
 				} else {
+					if fnList, ok := r.Context().Value(keyBeforeRequestCompleted).([]http.HandlerFunc); ok {
+						for i := len(fnList) - 1; i >= 0; i-- {
+							fn := fnList[i]
+							fn(w, r)
+						}
+					}
 					if err := json.NewEncoder(w).Encode(nil); err != nil {
 						h.catchError(w, Errors.NewServerError("Internal server error", err))
 					}

@@ -1,9 +1,12 @@
 package wx
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"strings"
+	"sync"
+	"time"
 )
 
 var useSwagger bool = false
@@ -79,6 +82,31 @@ func (s *httpServer) loadController() error {
 	return nil
 
 }
+
+type keyHandler string
+
+var keyBeforeRequestCompleted = keyHandler("hack-before-request-completed")
+
+type initAfterHandler struct {
+	once sync.Once
+}
+
+var initAfterHandlerMap sync.Map
+var afterHandlers = []http.HandlerFunc{}
+
+func (s *httpServer) BeforeRequestCompleted(key string, w http.ResponseWriter, r *http.Request, fn http.HandlerFunc) (http.ResponseWriter, *http.Request) {
+	a, _ := initAfterHandlerMap.LoadOrStore(key, &initAfterHandler{})
+	i := a.(*initAfterHandler)
+	i.once.Do(func() {
+		afterHandlers = append(afterHandlers, fn)
+
+	})
+	ctx := context.WithValue(r.Context(), keyBeforeRequestCompleted, afterHandlers)
+	*r = *r.WithContext(ctx)
+	return w, r
+
+}
+
 func (s *httpServer) Use(mw func(w http.ResponseWriter, r *http.Request, next http.HandlerFunc)) {
 	s.mws = append(s.mws, mw)
 }
@@ -88,10 +116,23 @@ func (s *httpServer) Start() error {
 		return err
 	}
 	// Handler cuối cùng (gốc)
+	// final := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	// 	s.mux.ServeHTTP(w, r)
+	// })
 	final := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		s.mux.ServeHTTP(w, r)
-	})
+		start := time.Now()
 
+		s.mux.ServeHTTP(w, r)
+
+		// ⚠️ Đến đây có thể header đã gửi
+		// => không nên set thêm header, chỉ nên thêm Trailer
+		w.Header().Add("Trailer", "X-Process-Time")
+
+		if rc := http.NewResponseController(w); rc != nil {
+			// Dùng trailer — header này được phép gửi sau response
+			w.Header().Set("X-Process-Time", fmt.Sprintf("%.2fms", float64(time.Since(start).Microseconds())/1000))
+		}
+	})
 	// Xây chuỗi middleware từ cuối về đầu
 	for i := len(s.mws) - 1; i >= 0; i-- {
 		mw := s.mws[i]
