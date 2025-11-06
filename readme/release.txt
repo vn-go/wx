@@ -196,3 +196,10 @@ git tag -a v0.2.6 -m "use json-iterator"
 git push origin v0.2.6
 git push origin --tags
 #go get github.com/vn-go/wx@v0.2.6
+--
+git add .
+git commit -m "use json-iterator"
+git tag -a v0.2.7 -m "use json-iterator"
+git push origin v0.2.7
+git push origin --tags
+#go get github.com/vn-go/wx@v0.2.7
