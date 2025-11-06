@@ -35,7 +35,7 @@ type SwaggerInfo struct {
 	Contact     *SwaggerContact `json:"contact,omitempty"`
 }
 type swaggerBuild struct {
-	server  *htttpServer
+	server  *httpServer
 	BaseUri string
 	err     error
 	swagger *swaggers3.Swagger
@@ -45,7 +45,7 @@ type swaggerBuild struct {
 /*
 This function will create Swagger documentation
 
-@server : call wx.NewHtttpServer(...) before call this function
+@server : call wx.NewhttpServer(...) before call this function
 
 @BaseUri: Root URL for accessing Swagger documentation
 
@@ -53,7 +53,7 @@ Example: CreateSwagger("docs") -> http://.../docs/index.html
 
 Note: After calling this function, in order to Swagger doc show in browser , please call swaggerBuild.Build()
 */
-func CreateSwagger(server *htttpServer, BaseUri string) swaggerBuild {
+func CreateSwagger(server *httpServer, BaseUri string) swaggerBuild {
 	BaseUri = strings.TrimPrefix(BaseUri, "/")
 	BaseUri = strings.TrimSuffix(BaseUri, "/")
 	BaseUri = "/" + BaseUri

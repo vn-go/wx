@@ -119,7 +119,7 @@ func main() {
 		server.Start(":50051")
 	}()
 	wx.Routes("/api", &UserController{})
-	server := wx.NewHtttpServer("/api", "8080", "0.0.0.0")
+	server := wx.NewHttpServer("/api", "8080", "0.0.0.0")
 	server.IsReleaseMode = true
 	swagger := wx.CreateSwagger(server, "/docs")
 

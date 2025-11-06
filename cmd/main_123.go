@@ -107,7 +107,7 @@ func main_old() {
 	//routes.InitRoute()
 
 	//wx.Routes("/api", &Hello{})
-	server := wx.NewHtttpServer("/api", "8080", "0.0.0.0")
+	server := wx.NewHttpServer("/api", "8080", "0.0.0.0")
 	server.IsReleaseMode = true
 	swagger := wx.CreateSwagger(server, "/docs")
 	swagger.OAuth2Password("/api/auth/login")
