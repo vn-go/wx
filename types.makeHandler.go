@@ -180,9 +180,17 @@ func (h *handlerInfo) Handler() http.HandlerFunc {
 							fn(w, r)
 						}
 					}
-					if err := json.NewEncoder(w).Encode(ret[0].Interface()); err != nil { // co cah nao bao http/net dung khoa header kg
+					bff, err := jsonIterator.Marshal(ret[0].Interface())
+					if err != nil {
 						h.catchError(w, Errors.NewServerError("Internal server error", err))
 					}
+					_, err = w.Write(bff)
+					if err != nil {
+						h.catchError(w, Errors.NewServerError("Internal server error", err))
+					}
+					// if err := json.NewEncoder(w).Encode(ret[0].Interface()); err != nil { // co cah nao bao http/net dung khoa header kg
+					// 	h.catchError(w, Errors.NewServerError("Internal server error", err))
+					// }
 				} else {
 					if fnList, ok := r.Context().Value(keyBeforeRequestCompleted).([]http.HandlerFunc); ok {
 						for i := len(fnList) - 1; i >= 0; i-- {
@@ -360,14 +368,30 @@ func (info *handlerInfo) CreateController(controllerValue, valueOfHandlerFunctio
 	return controllerValue, nil
 
 }
+func (info *handlerInfo) getRootAbsURL(r *http.Request) string {
+	scheme := "http"
+	if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {
+		scheme = "https"
+	}
+
+	host := r.Host
+	if host == "" {
+		host = r.URL.Host
+	}
+
+	return fmt.Sprintf("%s://%s", scheme, host)
+}
 func (info *handlerInfo) CreateHandlerValue(r *http.Request, w http.ResponseWriter) (reflect.Value, reflect.Value) {
 	if utils.controllers.isHandler(info.typeOfArgIsIsHandlerElem) {
 		if info.typeOfArgIsIsHandler.Kind() == reflect.Ptr {
 
 			var retVale Handler = func() *httpContext {
 				return &httpContext{
-					Req: r,
-					Res: w,
+					Req:        r,
+					Res:        w,
+					rootAbsUrl: info.getRootAbsURL(r),
+					ApiPath:    info.uri,
+					schema:     r.URL.Scheme,
 				}
 			}
 			var retValePtr *Handler = &retVale
@@ -377,8 +401,11 @@ func (info *handlerInfo) CreateHandlerValue(r *http.Request, w http.ResponseWrit
 		} else {
 			ret := func() *httpContext {
 				return &httpContext{
-					Req: r,
-					Res: w,
+					Req:        r,
+					Res:        w,
+					rootAbsUrl: info.getRootAbsURL(r),
+					ApiPath:    info.uri,
+					schema:     r.URL.Scheme,
 				}
 			}
 			retVal := reflect.ValueOf(ret)
@@ -390,8 +417,11 @@ func (info *handlerInfo) CreateHandlerValue(r *http.Request, w http.ResponseWrit
 
 	ret := func() *httpContext {
 		return &httpContext{
-			Req: r,
-			Res: w,
+			Req:        r,
+			Res:        w,
+			rootAbsUrl: info.getRootAbsURL(r),
+			ApiPath:    info.uri,
+			schema:     r.URL.Scheme,
 		}
 	}
 	retValOfHandlerFn := reflect.ValueOf(ret)
