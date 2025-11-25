@@ -120,7 +120,7 @@ func (h *handlerInfo) getAuth(valueOfHandler reflect.Value) (reflect.Value, erro
 			h.typeOfFiedAuth.String(), h.typeOfFiedAuth.String(),
 		)
 		if Options.IsDebug {
-			fmt.Println(err)
+
 			panic(err)
 		}
 
@@ -149,9 +149,12 @@ func (h *handlerInfo) Handler() http.HandlerFunc {
 		defer func() {
 			if r := recover(); r != nil {
 				if Options.IsDebug {
+					fmt.Println("panic message\n:", r)
+					fmt.Println("stack trace:")
 					fmt.Println(string(debug.Stack())) // giống exception trace trong C#
 				} else {
-					Options.onError(errors.New(string(debug.Stack())))
+					lastErr := fmt.Sprintf("panic message\n: %s \nstack trace:\n", r)
+					Options.onError(errors.New(lastErr + string(debug.Stack())))
 				}
 
 				//fmt.Println(string(debug.Stack())) // giống exception trace trong C#
