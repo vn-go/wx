@@ -149,11 +149,11 @@ func (h *handlerInfo) Handler() http.HandlerFunc {
 		defer func() {
 			if r := recover(); r != nil {
 				if Options.IsDebug {
-					fmt.Println("panic message\n:", r)
+					fmt.Printf("panic message: %s \n", r)
 					fmt.Println("stack trace:")
 					fmt.Println(string(debug.Stack())) // giống exception trace trong C#
 				} else {
-					lastErr := fmt.Sprintf("panic message\n: %s \nstack trace:\n", r)
+					lastErr := fmt.Sprintf("panic message: %s \nstack trace:\n", r)
 					Options.onError(errors.New(lastErr + string(debug.Stack())))
 				}
 
