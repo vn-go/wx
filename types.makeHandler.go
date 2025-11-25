@@ -1,20 +1,20 @@
 package wx
 
 import (
-	"context"
 	"encoding/json"
+	"errors"
 	sysErr "errors"
 	"fmt"
 	"io"
 	"mime/multipart"
 	"net/http"
 	"reflect"
+	"runtime/debug"
 	"strings"
 	"sync"
 
 	jsonIterator "github.com/json-iterator/go"
 
-	"github.com/google/uuid"
 	"github.com/vn-go/wx/internal"
 )
 
@@ -93,7 +93,7 @@ func (h *handlerInfo) catchError(w http.ResponseWriter, err error) {
 		}
 
 	}
-
+	Options.onError(err)
 	// Write response
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
@@ -103,7 +103,27 @@ func (h *handlerInfo) catchError(w http.ResponseWriter, err error) {
 func (h *handlerInfo) getAuth(valueOfHandler reflect.Value) (reflect.Value, error) {
 	newMethodOfAuth, found := authUtils.GetNewMethod(h.typeOfFiedAuth)
 	if !found {
-		err := fmt.Errorf("%s.Verify was not call, please call%s.Verify for setting up auth ", h.typeOfFiedAuth.String(), h.typeOfFiedAuth.String())
+		err := fmt.Errorf(
+			`%s.Verify was not call, please call%s.Verify for setting up auth.\n
+					Example: 
+					type BaseAuthController struct {
+						wx.Authenticate[<customize struct>]
+					}
+					then 
+					func (base *BaseAuthController) New() error {
+						base.Authenticate.Verify(func(ctx wx.Handler) (*core.UserClaims, error) {
+						...
+						})
+					}
+				\t `,
+
+			h.typeOfFiedAuth.String(), h.typeOfFiedAuth.String(),
+		)
+		if Options.IsDebug {
+			fmt.Println(err)
+			panic(err)
+		}
+
 		return reflect.Value{}, Errors.NewServerError("server error", err)
 	}
 	ret := reflect.New(h.typeOfFiedAuth)
@@ -126,13 +146,18 @@ func (h *handlerInfo) getAuth(valueOfHandler reflect.Value) (reflect.Value, erro
 
 func (h *handlerInfo) Handler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// defer func() {
-		// 	if r := recover(); r != nil {
-		// 		Options.onError(errors.New(string(debug.Stack())))
-		// 		//fmt.Println(string(debug.Stack())) // giống exception trace trong C#
+		defer func() {
+			if r := recover(); r != nil {
+				if Options.IsDebug {
+					fmt.Println(string(debug.Stack())) // giống exception trace trong C#
+				} else {
+					Options.onError(errors.New(string(debug.Stack())))
+				}
 
-		// 	}
-		// }()
+				//fmt.Println(string(debug.Stack())) // giống exception trace trong C#
+
+			}
+		}()
 
 		if r.Method != h.httpMethod {
 			w.WriteHeader(http.StatusMethodNotAllowed)
@@ -180,17 +205,9 @@ func (h *handlerInfo) Handler() http.HandlerFunc {
 							fn(w, r)
 						}
 					}
-					bff, err := jsonIterator.Marshal(ret[0].Interface())
-					if err != nil {
+					if err := json.NewEncoder(w).Encode(ret[0].Interface()); err != nil { // co cah nao bao http/net dung khoa header kg
 						h.catchError(w, Errors.NewServerError("Internal server error", err))
 					}
-					_, err = w.Write(bff)
-					if err != nil {
-						h.catchError(w, Errors.NewServerError("Internal server error", err))
-					}
-					// if err := json.NewEncoder(w).Encode(ret[0].Interface()); err != nil { // co cah nao bao http/net dung khoa header kg
-					// 	h.catchError(w, Errors.NewServerError("Internal server error", err))
-					// }
 				} else {
 					if fnList, ok := r.Context().Value(keyBeforeRequestCompleted).([]http.HandlerFunc); ok {
 						for i := len(fnList) - 1; i >= 0; i-- {
@@ -198,7 +215,10 @@ func (h *handlerInfo) Handler() http.HandlerFunc {
 							fn(w, r)
 						}
 					}
-					if err := json.NewEncoder(w).Encode(nil); err != nil {
+					// if err := json.NewEncoder(w).Encode(nil); err != nil {
+					// 	h.catchError(w, Errors.NewServerError("Internal server error", err))
+					// }
+					if err := jsonIterator.NewEncoder(w).Encode(nil); err != nil {
 						h.catchError(w, Errors.NewServerError("Internal server error", err))
 					}
 				}
@@ -227,17 +247,17 @@ func (info *handlerInfo) createHandler(w http.ResponseWriter, r *http.Request) H
 	return ret
 }
 func (info *handlerInfo) Invoke(w http.ResponseWriter, r *http.Request) ([]reflect.Value, error) {
-	reqID := r.Header.Get("X-Request-ID")
-	if reqID == "" {
-		reqID = uuid.NewString()
-	}
+	// reqID := r.Header.Get("X-Request-ID")
+	// if reqID == "" {
+	// 	reqID = uuid.NewString()
+	// }
 
-	// gắn vào context
-	ctx := context.WithValue(r.Context(), "requestID", reqID)
+	// // gắn vào context
+	// ctx := context.WithValue(r.Context(), "requestID", reqID)
 
 	//w.Header().Set("X-Request-ID", reqID) // trả về cho client
 	contentType := r.Header.Get("Content-Type")
-	valueOfArgsIsHandler, valueOfHandlerFunction := info.CreateHandlerValue(r.WithContext(ctx), w)
+	valueOfArgsIsHandler, valueOfHandlerFunction := info.CreateHandlerValue(r, w)
 	var controller reflect.Value
 	if Options.UsePool {
 		controller = poolValues.Get(info.controllerTypeElem)
@@ -368,30 +388,14 @@ func (info *handlerInfo) CreateController(controllerValue, valueOfHandlerFunctio
 	return controllerValue, nil
 
 }
-func (info *handlerInfo) getRootAbsURL(r *http.Request) string {
-	scheme := "http"
-	if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {
-		scheme = "https"
-	}
-
-	host := r.Host
-	if host == "" {
-		host = r.URL.Host
-	}
-
-	return fmt.Sprintf("%s://%s", scheme, host)
-}
 func (info *handlerInfo) CreateHandlerValue(r *http.Request, w http.ResponseWriter) (reflect.Value, reflect.Value) {
 	if utils.controllers.isHandler(info.typeOfArgIsIsHandlerElem) {
 		if info.typeOfArgIsIsHandler.Kind() == reflect.Ptr {
 
 			var retVale Handler = func() *httpContext {
 				return &httpContext{
-					Req:        r,
-					Res:        w,
-					rootAbsUrl: info.getRootAbsURL(r),
-					ApiPath:    info.uri,
-					schema:     r.URL.Scheme,
+					Req: r,
+					Res: w,
 				}
 			}
 			var retValePtr *Handler = &retVale
@@ -401,11 +405,8 @@ func (info *handlerInfo) CreateHandlerValue(r *http.Request, w http.ResponseWrit
 		} else {
 			ret := func() *httpContext {
 				return &httpContext{
-					Req:        r,
-					Res:        w,
-					rootAbsUrl: info.getRootAbsURL(r),
-					ApiPath:    info.uri,
-					schema:     r.URL.Scheme,
+					Req: r,
+					Res: w,
 				}
 			}
 			retVal := reflect.ValueOf(ret)
@@ -417,11 +418,8 @@ func (info *handlerInfo) CreateHandlerValue(r *http.Request, w http.ResponseWrit
 
 	ret := func() *httpContext {
 		return &httpContext{
-			Req:        r,
-			Res:        w,
-			rootAbsUrl: info.getRootAbsURL(r),
-			ApiPath:    info.uri,
-			schema:     r.URL.Scheme,
+			Req: r,
+			Res: w,
 		}
 	}
 	retValOfHandlerFn := reflect.ValueOf(ret)

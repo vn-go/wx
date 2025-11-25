@@ -125,6 +125,7 @@ func OnError(fn func(err error)) {
 
 var Options = &optionTypes{
 	onError: func(err error) {
+
 		log.Output(2, err.Error())
 	},
 }
