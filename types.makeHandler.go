@@ -208,7 +208,7 @@ func (h *handlerInfo) Handler() http.HandlerFunc {
 							fn(w, r)
 						}
 					}
-					if err := json.NewEncoder(w).Encode(ret[0].Interface()); err != nil { // co cah nao bao http/net dung khoa header kg
+					if err := jsonIterator.NewEncoder(w).Encode(ret[0].Interface()); err != nil { // co cah nao bao http/net dung khoa header kg
 						h.catchError(w, Errors.NewServerError("Internal server error", err))
 					}
 				} else {
