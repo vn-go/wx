@@ -65,9 +65,14 @@ func (s *httpServer) SetMaxUploadSize(val uint64) {
 }
 func (s *httpServer) loadController() error {
 	for _, x := range utils.Routes.UriList {
-		fmt.Println("Registering route:", x)
+		url := x
+		if currentServer.BaseUrl != "" && !strings.HasPrefix(x, "/") {
+			url = currentServer.BaseUrl + "/" + x
+		}
 
-		s.mux.HandleFunc(x, utils.Routes.Data[x].Info.Handler())
+		fmt.Println("Registering route:", url)
+
+		s.mux.HandleFunc(url, utils.Routes.Data[x].Info.Handler())
 
 	}
 	for k, v := range handlerMapping {

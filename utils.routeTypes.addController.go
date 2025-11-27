@@ -25,6 +25,7 @@ func (r *routeTypes) Add(baseUri string, ins ...any) error {
 		for i := 0; i < ptrType.NumMethod(); i++ {
 			method := ptrType.Method(i)
 			info, err := utils.Uri.MakeHandlerFromMethod(method)
+
 			if err != nil {
 				return err
 			}
@@ -37,10 +38,14 @@ func (r *routeTypes) Add(baseUri string, ins ...any) error {
 				}
 				r.UriList = append(r.UriList, info.uriHandler)
 			} else {
-				r.Data[baseUri+"/"+info.uriHandler] = routeItem{
+				if baseUri != "" {
+					info.uri = baseUri + "/" + info.uri
+				}
+
+				r.Data[info.uri] = routeItem{
 					Info: info,
 				}
-				r.UriList = append(r.UriList, baseUri+"/"+info.uriHandler)
+				r.UriList = append(r.UriList, info.uri)
 			}
 
 		}
