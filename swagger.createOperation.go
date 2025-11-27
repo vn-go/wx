@@ -7,7 +7,7 @@ import (
 	swaggers3 "github.com/vn-go/wx/swagger3"
 )
 
-func (sb *swaggerBuild) createOperation(handler webHandler) *swaggers3.Operation {
+func (sb *swaggerBuild) createOperation(handler webHandler, tags []string) *swaggers3.Operation {
 	var content map[string]swaggers3.MediaType
 	// errType := reflect.TypeOf((*error)(nil)).Elem()
 	content = map[string]swaggers3.MediaType{
@@ -47,8 +47,9 @@ func (sb *swaggerBuild) createOperation(handler webHandler) *swaggers3.Operation
 			fmt.Println(ExamplesData)
 		}
 	}
+	tags = append(tags, tag)
 	ret := &swaggers3.Operation{
-		Tags: []string{tag},
+		Tags: tags,
 
 		Parameters: sb.createParamtersFromUriParams(handler),
 		Responses: map[string]swaggers3.Response{

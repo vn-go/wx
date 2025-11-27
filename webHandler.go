@@ -13,6 +13,7 @@ type webHandler struct {
 	Method      string
 	Index       int
 	uriInfo     inspectUriInfo
+	BaseRoute   string
 }
 
 var handlerList []webHandler

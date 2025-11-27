@@ -27,7 +27,7 @@ func (sb *swaggerBuild) swagger3GetPaths() *swaggerBuild {
 			continue
 		}
 
-		operation := sb.createOperation(h)
+		operation := sb.createOperation(h, []string{h.BaseRoute})
 		operationValue := reflect.ValueOf(operation)
 
 		pathItemValue := reflect.ValueOf(&pathItem).Elem() // lấy địa chỉ struct để set
