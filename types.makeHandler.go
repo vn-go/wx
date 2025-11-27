@@ -262,18 +262,27 @@ func (info *handlerInfo) Invoke(w http.ResponseWriter, r *http.Request) ([]refle
 	contentType := r.Header.Get("Content-Type")
 	valueOfArgsIsHandler, valueOfHandlerFunction := info.CreateHandlerValue(r, w)
 	var controller reflect.Value
-	if Options.UsePool {
-		controller = poolValues.Get(info.controllerTypeElem)
-		defer poolValues.Put(controller)
+	var err error
+	if Options.UseDynamicController {
+		if Options.UsePool {
+			controller = poolValues.Get(info.controllerTypeElem)
+			defer poolValues.Put(controller)
+		} else {
+			controller = reflect.New(info.controllerTypeElem)
+		}
+
+		controller, err = info.CreateController(controller, valueOfHandlerFunction)
+
+		if err != nil {
+			// http.Error(w, err.Error(), http.StatusInternalServerError)
+			return nil, err
+		}
 	} else {
-		controller = reflect.New(info.controllerTypeElem)
-	}
-
-	controller, err := info.CreateController(controller, valueOfHandlerFunction)
-
-	if err != nil {
-		// http.Error(w, err.Error(), http.StatusInternalServerError)
-		return nil, err
+		controller, err = info.CreateSinhletonController(info.controllerTypeElem, controller, valueOfHandlerFunction)
+		if err != nil {
+			// http.Error(w, err.Error(), http.StatusInternalServerError)
+			return nil, err
+		}
 	}
 	var authValue reflect.Value
 	if info.isAuth {
@@ -373,6 +382,24 @@ func (info *handlerInfo) Invoke(w http.ResponseWriter, r *http.Request) ([]refle
 	return retRun[0 : len(retRun)-1], nil
 }
 
+type initCreateSinhletonController struct {
+	once sync.Once
+	reflect.Value
+	err error
+}
+
+var initCreateSinhletonControllerMap sync.Map
+
+func (info *handlerInfo) CreateSinhletonController(controllerType reflect.Type, controllerValue, valueOfHandlerFunction reflect.Value) (reflect.Value, error) {
+	a, _ := initCreateSinhletonControllerMap.LoadOrStore(controllerType, &initCreateSinhletonController{})
+	i := a.(*initCreateSinhletonController)
+	i.once.Do(func() {
+		controllerValue = reflect.New(controllerType)
+		i.Value, i.err = info.CreateController(controllerValue, valueOfHandlerFunction)
+	})
+	return i.Value, i.err
+
+}
 func (info *handlerInfo) CreateController(controllerValue, valueOfHandlerFunction reflect.Value) (reflect.Value, error) {
 
 	if info.conrollerNewMethod != nil {

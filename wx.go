@@ -117,6 +117,8 @@ type optionTypes struct {
 	IsDebug bool
 	onError func(err error)
 	UsePool bool
+	// True eache request will create a new controller instance, False will use the same instance for all requests
+	UseDynamicController bool
 }
 
 func OnError(fn func(err error)) {
