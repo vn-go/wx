@@ -210,3 +210,10 @@ git tag -a v0.2.8 -m "use json-iterator"
 git push origin v0.2.8
 git push origin --tags
 #go get github.com/vn-go/wx@v0.2.8
+
+git add .
+git commit -m "support static controller"
+git tag -a v0.2.9 -m "support static controlle"
+git push origin v0.2.9
+git push origin --tags
+#go get github.com/vn-go/wx@v0.2.9
