@@ -42,7 +42,9 @@ func (u *utilsType) ExtractUriInfo(ret *handlerInfo) {
 				if strings.Contains(ret.uri, "@") {
 					ret.uri = strings.Replace(ret.uri, "@", controllerName, 1)
 				} else {
-					ret.uri = controllerName + "/" + ret.uri
+					if !ret.isAbsUri {
+						ret.uri = controllerName + "/" + ret.uri
+					}
 				}
 				if ret.isAbsUri {
 					ret.uri = "/" + ret.uri
