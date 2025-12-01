@@ -19,7 +19,7 @@ type uriParam struct {
 	FieldIndex []int
 }
 type handlerInfo struct {
-	
+
 	/*
 		The argument index in the method is a Handler, or the struct has an embedded Handler field.
 		Example:
@@ -89,4 +89,8 @@ type handlerInfo struct {
 	isAuth           bool
 	// newMethodOfAuth  reflect.Value
 
+}
+
+func (h *handlerInfo) IsAbsUri() bool {
+	return h.isAbsUri
 }

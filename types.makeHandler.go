@@ -3,6 +3,7 @@ package wx
 import (
 	"encoding/json"
 	"errors"
+
 	sysErr "errors"
 	"fmt"
 	"io"
@@ -208,7 +209,7 @@ func (h *handlerInfo) Handler() http.HandlerFunc {
 							fn(w, r)
 						}
 					}
-					if err := jsonIterator.NewEncoder(w).Encode(ret[0].Interface()); err != nil { // co cah nao bao http/net dung khoa header kg
+					if err := json.NewEncoder(w).Encode(ret[0].Interface()); err != nil { // co cah nao bao http/net dung khoa header kg
 						h.catchError(w, Errors.NewServerError("Internal server error", err))
 					}
 				} else {
@@ -221,7 +222,7 @@ func (h *handlerInfo) Handler() http.HandlerFunc {
 					// if err := json.NewEncoder(w).Encode(nil); err != nil {
 					// 	h.catchError(w, Errors.NewServerError("Internal server error", err))
 					// }
-					if err := jsonIterator.NewEncoder(w).Encode(nil); err != nil {
+					if err := json.NewEncoder(w).Encode(nil); err != nil {
 						h.catchError(w, Errors.NewServerError("Internal server error", err))
 					}
 				}
@@ -854,8 +855,13 @@ func (info *handlerInfo) applyUri(contextValue reflect.Value, r *http.Request) e
 		}
 		for i := 1; i < len(placeHolders[0]); i++ {
 			fieldIndex := info.uriParams[i-1].FieldIndex
-			fieldSet := contextValue.Elem().FieldByIndex(fieldIndex)
-			fieldSet.Set(reflect.ValueOf(placeHolders[0][i]))
+			if contextValue.Kind() == reflect.Ptr {
+				fieldSet := contextValue.Elem().FieldByIndex(fieldIndex)
+				fieldSet.Set(reflect.ValueOf(placeHolders[0][i]))
+			} else {
+				fieldSet := contextValue.FieldByIndex(fieldIndex)
+				fieldSet.Set(reflect.ValueOf(placeHolders[0][i]))
+			}
 
 		}
 		if info.isQueryUri {
