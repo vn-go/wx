@@ -40,6 +40,7 @@ func (r *routeTypes) Add(baseUri string, ins ...any) error {
 			} else {
 				if baseUri != "" {
 					info.uri = baseUri + "/" + info.uri
+					info.uriHandler = baseUri + "/" + info.uriHandler
 				}
 
 				r.Data[info.uri] = routeItem{

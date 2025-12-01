@@ -245,3 +245,10 @@ git tag -a v0.2.13 -m "support muti routes"
 git push origin v0.2.13
 git push origin --tags
 #go get github.com/vn-go/wx@v0.2.13
+---
+git add .
+git commit -m "support muti routes"
+git tag -a v0.2.14 -m "support muti routes"
+git push origin v0.2.14
+git push origin --tags
+#go get github.com/vn-go/wx@v0.2.14
